@@ -221,56 +221,17 @@ button {
 
 .loader-mark {
   display: grid;
-  gap: 1.15rem;
-  justify-items: center;
-  color: var(--primary);
+  place-items: center;
 }
 
-.loader-monogram {
-  position: relative;
-  display: inline-grid;
-  grid-auto-flow: column;
-  align-items: end;
-  gap: 0.22rem;
-  padding: 1.55rem 1.45rem 1.2rem;
-  border-radius: 28px;
-  border: 1px solid rgba(159, 24, 38, 0.16);
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(255, 238, 241, 0.92));
-  box-shadow: 0 24px 54px rgba(92, 13, 20, 0.14);
-  isolation: isolate;
-  animation: loaderFloat 1.8s ease-in-out infinite;
-}
-
-.loader-monogram::before {
-  content: "";
-  position: absolute;
-  inset: 0.65rem;
-  border-radius: 22px;
-  border: 1px solid rgba(159, 24, 38, 0.12);
-}
-
-.loader-monogram span {
-  position: relative;
-  z-index: 1;
-  font-family: "Cormorant Garamond", serif;
-  font-size: clamp(4rem, 12vw, 6.2rem);
-  font-weight: 700;
-  line-height: 0.82;
-  letter-spacing: 0.04em;
-  color: var(--primary);
-  text-shadow: 0 10px 24px rgba(159, 24, 38, 0.14);
-}
-
-.loader-monogram span:last-child {
-  margin-left: -0.22rem;
-}
-
-.loader-caption {
-  margin: 0;
-  letter-spacing: 0.28em;
-  text-transform: uppercase;
-  font-size: 0.85rem;
-  font-weight: 700;
+.loader-logo {
+  display: block;
+  width: min(42rem, 78vw);
+  height: auto;
+  opacity: 0;
+  filter: drop-shadow(0 22px 42px rgba(92, 13, 20, 0.18));
+  transform: translateY(1rem) scale(0.9);
+  animation: loaderLogoEnter 0.75s ease forwards, loaderLogoFloat 2.1s ease-in-out 0.8s infinite;
 }
 
 .page-loader.is-transitioning {
@@ -279,8 +240,8 @@ button {
   pointer-events: auto;
 }
 
-.page-loader.is-transitioning .loader-monogram {
-  animation-duration: 0.7s;
+.page-loader.is-transitioning .loader-logo {
+  animation: loaderLogoFlash 0.42s ease forwards;
 }
 
 .topbar {
@@ -1075,15 +1036,35 @@ h3 {
   }
 }
 
-@keyframes loaderFloat {
+@keyframes loaderLogoEnter {
+  0% {
+    opacity: 0;
+    transform: translateY(1rem) scale(0.9);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes loaderLogoFloat {
   0%,
   100% {
-    transform: translateY(0) scale(0.98);
-    box-shadow: 0 24px 54px rgba(92, 13, 20, 0.14);
+    transform: translateY(0) scale(1);
   }
   50% {
-    transform: translateY(-6px) scale(1.02);
-    box-shadow: 0 30px 60px rgba(92, 13, 20, 0.2);
+    transform: translateY(-0.35rem) scale(1.02);
+  }
+}
+
+@keyframes loaderLogoFlash {
+  0% {
+    opacity: 0;
+    transform: translateY(1.2rem) scale(0.88);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
   }
 }
 
@@ -1228,18 +1209,8 @@ h3 {
     height: 3.5rem;
   }
 
-  .loader-monogram {
-    padding: 1.3rem 1.15rem 1rem;
-    border-radius: 24px;
-  }
-
-  .loader-monogram span {
-    font-size: clamp(3.2rem, 18vw, 4.6rem);
-  }
-
-  .loader-caption {
-    font-size: 0.72rem;
-    letter-spacing: 0.2em;
+  .loader-logo {
+    width: min(27rem, 86vw);
   }
 
   .page-hero-copy {

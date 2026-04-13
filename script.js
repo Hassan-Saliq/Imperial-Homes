@@ -13,7 +13,7 @@ const hideLoader = () => {
   window.setTimeout(() => {
     loader?.classList.add("is-hidden");
     loader?.classList.remove("is-transitioning");
-  }, 650);
+  }, 850);
 };
 
 window.addEventListener("load", hideLoader);
@@ -29,7 +29,7 @@ const showPageTransition = (href) => {
   loader.classList.add("is-transitioning");
   window.setTimeout(() => {
     window.location.href = href;
-  }, 240);
+  }, 420);
 };
 
 document.querySelectorAll("a[href]").forEach((link) => {
