@@ -25,10 +25,6 @@ html {
   scroll-behavior: smooth;
 }
 
-@view-transition {
-  navigation: auto;
-}
-
 body {
   margin: 0;
   font-family: "Manrope", sans-serif;
@@ -65,7 +61,8 @@ button {
   position: relative;
   overflow: clip;
   transform-origin: center top;
-  transition: opacity 0.35s ease, transform 0.35s ease, filter 0.35s ease;
+  will-change: opacity, transform;
+  transition: opacity 0.24s ease, transform 0.24s ease;
 }
 
 .page-loader {
@@ -77,10 +74,11 @@ button {
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
-  background: rgba(255, 250, 249, 0.22);
-  backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
-  transition: opacity 0.28s ease, visibility 0.28s ease;
+  contain: paint;
+  background:
+    radial-gradient(circle at center, rgba(255, 255, 255, 0.78) 0%, rgba(255, 247, 246, 0.92) 42%, rgba(255, 241, 241, 0.96) 100%);
+  will-change: opacity;
+  transition: opacity 0.18s ease, visibility 0.18s ease;
 }
 
 .page-loader.is-hidden {
@@ -91,7 +89,8 @@ button {
 
 .chat-widget,
 .whatsapp-float {
-  transition: opacity 0.35s ease, transform 0.35s ease, filter 0.35s ease;
+  will-change: opacity, transform;
+  transition: opacity 0.24s ease, transform 0.24s ease;
 }
 
 .chat-widget {
@@ -239,6 +238,7 @@ button {
   display: grid;
   place-items: center;
   width: clamp(7rem, 12vw, 9rem);
+  transform: translateZ(0);
 }
 
 .loader-logo {
@@ -248,7 +248,9 @@ button {
   height: auto;
   opacity: 0;
   filter: drop-shadow(0 16px 24px rgba(92, 13, 20, 0.18));
-  transform: translateY(8px) scale(0.92);
+  will-change: opacity, transform;
+  backface-visibility: hidden;
+  transform: translate3d(0, 8px, 0) scale(0.92);
 }
 
 .page-loader.is-transitioning {
@@ -258,7 +260,7 @@ button {
 }
 
 .page-loader.is-transitioning .loader-logo {
-  animation: loaderLogoCycle var(--loader-duration, 1800ms) cubic-bezier(0.22, 0.9, 0.28, 1) both;
+  animation: loaderLogoCycle var(--loader-duration, 1300ms) cubic-bezier(0.22, 0.9, 0.28, 1) both;
 }
 
 html.is-transitioning-page .page-loader {
@@ -267,15 +269,14 @@ html.is-transitioning-page .page-loader {
 }
 
 html.is-transitioning-page .loader-logo {
-  animation: loaderLogoCycle var(--loader-duration, 1800ms) cubic-bezier(0.22, 0.9, 0.28, 1) both;
+  animation: loaderLogoCycle var(--loader-duration, 1300ms) cubic-bezier(0.22, 0.9, 0.28, 1) both;
 }
 
 html.is-transitioning-page .site-shell,
 html.is-transitioning-page .chat-widget,
 html.is-transitioning-page .whatsapp-float {
-  opacity: 0.16;
-  filter: blur(14px);
-  transform: scale(1.01);
+  opacity: 0.12;
+  transform: translate3d(0, 6px, 0) scale(1.008);
   pointer-events: none;
 }
 
@@ -1082,19 +1083,19 @@ h3 {
 @keyframes loaderLogoCycle {
   0% {
     opacity: 0;
-    transform: translateY(10px) scale(0.9);
+    transform: translate3d(0, 14px, 0) scale(0.88);
   }
-  18% {
+  16% {
     opacity: 1;
-    transform: translateY(0) scale(1);
+    transform: translate3d(0, 0, 0) scale(1);
   }
-  82% {
+  78% {
     opacity: 1;
-    transform: translateY(0) scale(1);
+    transform: translate3d(0, 0, 0) scale(1);
   }
   100% {
     opacity: 0;
-    transform: translateY(-8px) scale(0.96);
+    transform: translate3d(0, -10px, 0) scale(0.98);
   }
 }
 
