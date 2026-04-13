@@ -7,13 +7,13 @@ const currentPage = document.body.dataset.page;
 const topbar = document.querySelector(".topbar");
 const chatToggle = document.querySelector(".chat-toggle");
 const chatPanel = document.querySelector(".chat-panel");
+const prefetchedPages = new Set();
 let lastScrollY = window.scrollY;
 
 const hideLoader = () => {
-  window.setTimeout(() => {
-    loader?.classList.add("is-hidden");
-    loader?.classList.remove("is-transitioning");
-  }, 850);
+  loader?.classList.add("is-hidden");
+  loader?.classList.remove("is-transitioning");
+  document.body.classList.remove("is-leaving");
 };
 
 window.addEventListener("load", hideLoader);
@@ -25,14 +25,36 @@ const showPageTransition = (href) => {
     return;
   }
 
+  document.body.classList.add("is-leaving");
   loader.classList.remove("is-hidden");
   loader.classList.add("is-transitioning");
   window.setTimeout(() => {
     window.location.href = href;
-  }, 420);
+  }, 180);
+};
+
+const prefetchPage = (url) => {
+  if (prefetchedPages.has(url.href)) {
+    return;
+  }
+
+  prefetchedPages.add(url.href);
+
+  const prefetchLink = document.createElement("link");
+  prefetchLink.rel = "prefetch";
+  prefetchLink.href = url.href;
+  prefetchLink.as = "document";
+  document.head.append(prefetchLink);
 };
 
 document.querySelectorAll("a[href]").forEach((link) => {
+  const linkUrl = new URL(link.href, window.location.href);
+
+  if (linkUrl.origin === window.location.origin && (linkUrl.protocol === "http:" || linkUrl.protocol === "https:")) {
+    link.addEventListener("mouseenter", () => prefetchPage(linkUrl), { passive: true });
+    link.addEventListener("touchstart", () => prefetchPage(linkUrl), { passive: true, once: true });
+  }
+
   link.addEventListener("click", (event) => {
     if (event.defaultPrevented || event.button !== 0) {
       return;

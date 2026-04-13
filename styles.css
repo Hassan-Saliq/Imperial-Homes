@@ -25,6 +25,10 @@ html {
   scroll-behavior: smooth;
 }
 
+@view-transition {
+  navigation: auto;
+}
+
 body {
   margin: 0;
   font-family: "Manrope", sans-serif;
@@ -60,6 +64,8 @@ button {
 .site-shell {
   position: relative;
   overflow: clip;
+  transform-origin: center top;
+  transition: opacity 0.18s ease, transform 0.18s ease, filter 0.18s ease;
 }
 
 .page-loader {
@@ -68,8 +74,10 @@ button {
   z-index: 100;
   display: grid;
   place-items: center;
-  background: linear-gradient(180deg, #fff6f5 0%, #f6dfe2 100%);
-  transition: opacity 0.5s ease, visibility 0.5s ease;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 0.22s ease, visibility 0.22s ease;
 }
 
 .page-loader.is-hidden {
@@ -222,16 +230,17 @@ button {
 .loader-mark {
   display: grid;
   place-items: center;
+  width: 5rem;
+  height: 5rem;
 }
 
 .loader-logo {
   display: block;
-  width: min(42rem, 78vw);
+  width: clamp(2.9rem, 4vw, 3.8rem);
   height: auto;
   opacity: 0;
-  filter: drop-shadow(0 22px 42px rgba(92, 13, 20, 0.18));
-  transform: translateY(1rem) scale(0.9);
-  animation: loaderLogoEnter 0.75s ease forwards, loaderLogoFloat 2.1s ease-in-out 0.8s infinite;
+  filter: drop-shadow(0 12px 24px rgba(92, 13, 20, 0.16));
+  transform: scale(0.84);
 }
 
 .page-loader.is-transitioning {
@@ -241,7 +250,23 @@ button {
 }
 
 .page-loader.is-transitioning .loader-logo {
-  animation: loaderLogoFlash 0.42s ease forwards;
+  animation: loaderLogoEnter 0.34s cubic-bezier(0.22, 0.9, 0.28, 1) forwards;
+}
+
+body.is-leaving .site-shell,
+body.is-leaving .chat-widget,
+body.is-leaving .whatsapp-float {
+  opacity: 0;
+  transform: translateY(10px) scale(0.992);
+  filter: blur(3px);
+}
+
+::view-transition-old(root) {
+  animation: pageFadeOut 0.22s ease forwards;
+}
+
+::view-transition-new(root) {
+  animation: pageFadeIn 0.28s ease forwards;
 }
 
 .topbar {
@@ -1039,32 +1064,52 @@ h3 {
 @keyframes loaderLogoEnter {
   0% {
     opacity: 0;
-    transform: translateY(1rem) scale(0.9);
+    transform: scale(0.78);
+  }
+  65% {
+    opacity: 1;
+    transform: scale(1.05);
   }
   100% {
     opacity: 1;
-    transform: translateY(0) scale(1);
+    transform: scale(1);
   }
 }
 
-@keyframes loaderLogoFloat {
-  0%,
+@keyframes pageFadeOut {
+  0% {
+    opacity: 1;
+    transform: scale(1);
+    filter: blur(0);
+  }
   100% {
-    transform: translateY(0) scale(1);
-  }
-  50% {
-    transform: translateY(-0.35rem) scale(1.02);
+    opacity: 0;
+    transform: scale(0.992);
+    filter: blur(3px);
   }
 }
 
-@keyframes loaderLogoFlash {
+@keyframes pageFadeIn {
   0% {
     opacity: 0;
-    transform: translateY(1.2rem) scale(0.88);
+    transform: scale(1.006);
+    filter: blur(3px);
   }
   100% {
     opacity: 1;
-    transform: translateY(0) scale(1);
+    transform: scale(1);
+    filter: blur(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .site-shell,
+  .page-loader,
+  .topbar,
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation: none !important;
+    transition: none !important;
   }
 }
 
@@ -1210,7 +1255,7 @@ h3 {
   }
 
   .loader-logo {
-    width: min(27rem, 86vw);
+    width: clamp(2.6rem, 14vw, 3.2rem);
   }
 
   .page-hero-copy {
