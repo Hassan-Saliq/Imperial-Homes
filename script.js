@@ -8,6 +8,8 @@ const topbar = document.querySelector(".topbar");
 const chatToggle = document.querySelector(".chat-toggle");
 const chatPanel = document.querySelector(".chat-panel");
 const prefetchedPages = new Set();
+const transitionStorageKey = "imperial-page-transition";
+const isTransitioningPage = document.documentElement.classList.contains("is-transitioning-page");
 let lastScrollY = window.scrollY;
 
 const hideLoader = () => {
@@ -16,8 +18,27 @@ const hideLoader = () => {
   document.body.classList.remove("is-leaving");
 };
 
-window.addEventListener("load", hideLoader);
-window.addEventListener("pageshow", hideLoader);
+const finishPageEntry = () => {
+  window.setTimeout(() => {
+    hideLoader();
+    document.documentElement.classList.remove("is-transitioning-page");
+    document.body.classList.remove("is-entering");
+    try {
+      sessionStorage.removeItem(transitionStorageKey);
+    } catch (error) {
+      // Ignore storage failures and continue with the transition.
+    }
+  }, isTransitioningPage ? 320 : 0);
+};
+
+if (isTransitioningPage) {
+  loader?.classList.remove("is-hidden");
+  loader?.classList.add("is-transitioning");
+  document.body.classList.add("is-entering");
+}
+
+window.addEventListener("load", finishPageEntry);
+window.addEventListener("pageshow", finishPageEntry);
 
 const showPageTransition = (href) => {
   if (!loader) {
@@ -25,12 +46,18 @@ const showPageTransition = (href) => {
     return;
   }
 
+  try {
+    sessionStorage.setItem(transitionStorageKey, "1");
+  } catch (error) {
+    // Ignore storage failures and continue with navigation.
+  }
+
   document.body.classList.add("is-leaving");
   loader.classList.remove("is-hidden");
   loader.classList.add("is-transitioning");
   window.setTimeout(() => {
     window.location.href = href;
-  }, 180);
+  }, 260);
 };
 
 const prefetchPage = (url) => {
@@ -47,10 +74,26 @@ const prefetchPage = (url) => {
   document.head.append(prefetchLink);
 };
 
+const shouldHandleAsInternalPage = (url, link) =>
+  url.origin === window.location.origin &&
+  (url.protocol === "http:" || url.protocol === "https:") &&
+  !link.hasAttribute("download") &&
+  link.target !== "_blank";
+
+const prefetchAllInternalPages = () => {
+  document.querySelectorAll("a[href]").forEach((link) => {
+    const url = new URL(link.href, window.location.href);
+
+    if (shouldHandleAsInternalPage(url, link) && url.pathname !== window.location.pathname) {
+      prefetchPage(url);
+    }
+  });
+};
+
 document.querySelectorAll("a[href]").forEach((link) => {
   const linkUrl = new URL(link.href, window.location.href);
 
-  if (linkUrl.origin === window.location.origin && (linkUrl.protocol === "http:" || linkUrl.protocol === "https:")) {
+  if (shouldHandleAsInternalPage(linkUrl, link)) {
     link.addEventListener("mouseenter", () => prefetchPage(linkUrl), { passive: true });
     link.addEventListener("touchstart", () => prefetchPage(linkUrl), { passive: true, once: true });
   }
@@ -69,16 +112,9 @@ document.querySelectorAll("a[href]").forEach((link) => {
       return;
     }
 
-    if (link.hasAttribute("download") || link.target === "_blank") {
-      return;
-    }
-
     const url = new URL(link.href, window.location.href);
-    if (url.origin !== window.location.origin) {
-      return;
-    }
 
-    if (url.protocol !== "http:" && url.protocol !== "https:") {
+    if (!shouldHandleAsInternalPage(url, link)) {
       return;
     }
 
@@ -94,6 +130,12 @@ document.querySelectorAll("a[href]").forEach((link) => {
     showPageTransition(url.href);
   });
 });
+
+if ("requestIdleCallback" in window) {
+  window.requestIdleCallback(prefetchAllInternalPages, { timeout: 1200 });
+} else {
+  window.setTimeout(prefetchAllInternalPages, 800);
+}
 
 if (navToggle && siteNav) {
   navToggle.addEventListener("click", () => {

@@ -11,7 +11,14 @@
     href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Cormorant+Garamond:wght@600;700&display=swap"
     rel="stylesheet"
   >
-  <link rel="stylesheet" href="styles.css?v=20260413c">
+  <script>
+    try {
+      if (sessionStorage.getItem("imperial-page-transition") === "1") {
+        document.documentElement.classList.add("is-transitioning-page");
+      }
+    } catch (error) {}
+  </script>
+  <link rel="stylesheet" href="styles.css?v=20260413d">
 </head>
 <body data-page="joint-venture">
   <div class="page-loader" aria-hidden="true">
@@ -164,6 +171,6 @@
       </div>
     </footer>
   </div>
-  <script src="script.js?v=20260413c"></script>
+  <script src="script.js?v=20260413d"></script>
 </body>
 </html>
