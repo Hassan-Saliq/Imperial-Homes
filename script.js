@@ -9,29 +9,62 @@ const chatToggle = document.querySelector(".chat-toggle");
 const chatPanel = document.querySelector(".chat-panel");
 const prefetchedPages = new Set();
 const transitionStorageKey = "imperial-page-transition";
+const transitionStartedAtKey = "imperial-page-transition-started-at";
+const transitionDurationMs = 1800;
+const transitionNavigateDelayMs = 180;
 const isTransitioningPage = document.documentElement.classList.contains("is-transitioning-page");
 let lastScrollY = window.scrollY;
+let hasFinishedPageEntry = false;
+
+const getTransitionRemainingMs = () => {
+  if (!isTransitioningPage) {
+    return 0;
+  }
+
+  try {
+    const startedAt = Number(sessionStorage.getItem(transitionStartedAtKey));
+    if (Number.isFinite(startedAt) && startedAt > 0) {
+      return Math.max(0, transitionDurationMs - (Date.now() - startedAt));
+    }
+  } catch (error) {
+    // Ignore storage failures and use the default duration.
+  }
+
+  return transitionDurationMs;
+};
 
 const hideLoader = () => {
   loader?.classList.add("is-hidden");
   loader?.classList.remove("is-transitioning");
+  loader?.style.removeProperty("--loader-duration");
 };
 
 const finishPageEntry = () => {
+  if (!isTransitioningPage || hasFinishedPageEntry) {
+    hideLoader();
+    return;
+  }
+
+  hasFinishedPageEntry = true;
+  const remainingMs = getTransitionRemainingMs();
+  loader?.style.setProperty("--loader-duration", `${remainingMs}ms`);
+
   window.setTimeout(() => {
     hideLoader();
     document.documentElement.classList.remove("is-transitioning-page");
     try {
       sessionStorage.removeItem(transitionStorageKey);
+      sessionStorage.removeItem(transitionStartedAtKey);
     } catch (error) {
       // Ignore storage failures and continue with the transition.
     }
-  }, isTransitioningPage ? 120 : 0);
+  }, remainingMs);
 };
 
 if (isTransitioningPage) {
   loader?.classList.remove("is-hidden");
   loader?.classList.add("is-transitioning");
+  loader?.style.setProperty("--loader-duration", `${getTransitionRemainingMs()}ms`);
 }
 
 window.addEventListener("load", finishPageEntry);
@@ -45,15 +78,18 @@ const showPageTransition = (href) => {
 
   try {
     sessionStorage.setItem(transitionStorageKey, "1");
+    sessionStorage.setItem(transitionStartedAtKey, String(Date.now()));
   } catch (error) {
     // Ignore storage failures and continue with navigation.
   }
 
+  document.documentElement.classList.add("is-transitioning-page");
   loader.classList.remove("is-hidden");
   loader.classList.add("is-transitioning");
+  loader.style.setProperty("--loader-duration", `${transitionDurationMs}ms`);
   window.setTimeout(() => {
     window.location.href = href;
-  }, 40);
+  }, transitionNavigateDelayMs);
 };
 
 const prefetchPage = (url) => {
