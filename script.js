@@ -9,10 +9,68 @@ const chatToggle = document.querySelector(".chat-toggle");
 const chatPanel = document.querySelector(".chat-panel");
 let lastScrollY = window.scrollY;
 
-window.addEventListener("load", () => {
+const hideLoader = () => {
   window.setTimeout(() => {
     loader?.classList.add("is-hidden");
+    loader?.classList.remove("is-transitioning");
   }, 650);
+};
+
+window.addEventListener("load", hideLoader);
+window.addEventListener("pageshow", hideLoader);
+
+const showPageTransition = (href) => {
+  if (!loader) {
+    window.location.href = href;
+    return;
+  }
+
+  loader.classList.remove("is-hidden");
+  loader.classList.add("is-transitioning");
+  window.setTimeout(() => {
+    window.location.href = href;
+  }, 240);
+};
+
+document.querySelectorAll("a[href]").forEach((link) => {
+  link.addEventListener("click", (event) => {
+    if (event.defaultPrevented || event.button !== 0) {
+      return;
+    }
+
+    if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
+      return;
+    }
+
+    const href = link.getAttribute("href");
+    if (!href || href.startsWith("#")) {
+      return;
+    }
+
+    if (link.hasAttribute("download") || link.target === "_blank") {
+      return;
+    }
+
+    const url = new URL(link.href, window.location.href);
+    if (url.origin !== window.location.origin) {
+      return;
+    }
+
+    if (url.protocol !== "http:" && url.protocol !== "https:") {
+      return;
+    }
+
+    if (url.pathname === window.location.pathname && url.search === window.location.search && url.hash) {
+      return;
+    }
+
+    if (url.pathname === window.location.pathname && url.search === window.location.search && !url.hash) {
+      return;
+    }
+
+    event.preventDefault();
+    showPageTransition(url.href);
+  });
 });
 
 if (navToggle && siteNav) {
