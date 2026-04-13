@@ -80,7 +80,7 @@ button {
 .chat-widget {
   position: fixed;
   right: 1.25rem;
-  bottom: 5.5rem;
+  bottom: 6rem;
   z-index: 41;
   display: flex;
   justify-content: flex-end;
@@ -104,22 +104,39 @@ button {
   position: relative;
   display: block;
   width: 1.7rem;
-  height: 1.2rem;
-  border-radius: 0.32rem;
-  background: #fff8f8;
-  transform: skewX(-8deg);
+  height: 1.28rem;
+  border: 0.15rem solid currentColor;
+  border-radius: 0.42rem;
+  background: transparent;
 }
 
+.chat-toggle-icon::before,
 .chat-toggle-icon::after {
   content: "";
   position: absolute;
-  right: 0.24rem;
-  bottom: -0.26rem;
-  width: 0.48rem;
-  height: 0.48rem;
-  border-bottom-right-radius: 0.12rem;
-  background: #fff8f8;
-  transform: rotate(38deg);
+}
+
+.chat-toggle-icon::before {
+  top: 50%;
+  left: 0.28rem;
+  width: 0.16rem;
+  height: 0.16rem;
+  border-radius: 50%;
+  background: currentColor;
+  transform: translateY(-50%);
+  box-shadow: 0.38rem 0 0 currentColor, 0.76rem 0 0 currentColor;
+}
+
+.chat-toggle-icon::after {
+  left: 0.28rem;
+  bottom: -0.34rem;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-right: 0.15rem solid currentColor;
+  border-bottom: 0.15rem solid currentColor;
+  border-bottom-right-radius: 0.14rem;
+  background: transparent;
+  transform: rotate(34deg);
 }
 
 .chat-toggle-text {
@@ -1138,7 +1155,7 @@ h3 {
 
   .chat-widget {
     right: 1rem;
-    bottom: 4.75rem;
+    bottom: 5.25rem;
   }
 
   .whatsapp-float {
