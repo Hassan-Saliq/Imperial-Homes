@@ -15,26 +15,23 @@ let lastScrollY = window.scrollY;
 const hideLoader = () => {
   loader?.classList.add("is-hidden");
   loader?.classList.remove("is-transitioning");
-  document.body.classList.remove("is-leaving");
 };
 
 const finishPageEntry = () => {
   window.setTimeout(() => {
     hideLoader();
     document.documentElement.classList.remove("is-transitioning-page");
-    document.body.classList.remove("is-entering");
     try {
       sessionStorage.removeItem(transitionStorageKey);
     } catch (error) {
       // Ignore storage failures and continue with the transition.
     }
-  }, isTransitioningPage ? 320 : 0);
+  }, isTransitioningPage ? 120 : 0);
 };
 
 if (isTransitioningPage) {
   loader?.classList.remove("is-hidden");
   loader?.classList.add("is-transitioning");
-  document.body.classList.add("is-entering");
 }
 
 window.addEventListener("load", finishPageEntry);
@@ -52,12 +49,11 @@ const showPageTransition = (href) => {
     // Ignore storage failures and continue with navigation.
   }
 
-  document.body.classList.add("is-leaving");
   loader.classList.remove("is-hidden");
   loader.classList.add("is-transitioning");
   window.setTimeout(() => {
     window.location.href = href;
-  }, 260);
+  }, 40);
 };
 
 const prefetchPage = (url) => {
