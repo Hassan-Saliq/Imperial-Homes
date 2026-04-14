@@ -75,7 +75,7 @@ button {
   visibility: hidden;
   pointer-events: none;
   contain: paint;
-  background: transparent;
+  background: linear-gradient(180deg, rgba(255, 250, 249, 0.12) 0%, rgba(255, 244, 244, 0.18) 100%);
   will-change: opacity;
   transition: opacity 0.12s ease, visibility 0.12s ease;
 }
@@ -300,8 +300,9 @@ html.is-transitioning-page .loader-mark {
 html.is-transitioning-page .site-shell,
 html.is-transitioning-page .chat-widget,
 html.is-transitioning-page .whatsapp-float {
-  opacity: 1;
-  transform: none;
+  opacity: 0.72;
+  filter: blur(6px);
+  transform: scale(1.01);
   pointer-events: none;
 }
 
