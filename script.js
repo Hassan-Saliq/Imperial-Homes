@@ -10,11 +10,12 @@ const chatPanel = document.querySelector(".chat-panel");
 const prefetchedPages = new Set();
 const transitionStorageKey = "imperial-page-transition";
 const transitionStartedAtKey = "imperial-page-transition-started-at";
-const transitionDurationMs = 1300;
-const transitionNavigateDelayMs = 110;
+const transitionDurationMs = 1100;
+const transitionNavigateDelayMs = 80;
 const isTransitioningPage = document.documentElement.classList.contains("is-transitioning-page");
 let lastScrollY = window.scrollY;
 let hasFinishedPageEntry = false;
+let isNavigating = false;
 
 const getTransitionRemainingMs = () => {
   if (!isTransitioningPage) {
@@ -71,6 +72,12 @@ window.addEventListener("load", finishPageEntry);
 window.addEventListener("pageshow", finishPageEntry);
 
 const showPageTransition = (href) => {
+  if (isNavigating) {
+    return;
+  }
+
+  isNavigating = true;
+
   if (!loader) {
     window.location.href = href;
     return;
@@ -131,6 +138,11 @@ document.querySelectorAll("a[href]").forEach((link) => {
   }
 
   link.addEventListener("click", (event) => {
+    if (isNavigating) {
+      event.preventDefault();
+      return;
+    }
+
     if (event.defaultPrevented || event.button !== 0) {
       return;
     }
