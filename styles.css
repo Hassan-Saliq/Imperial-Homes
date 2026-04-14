@@ -234,10 +234,28 @@ button {
 }
 
 .loader-mark {
+  position: relative;
   display: grid;
   place-items: center;
   width: clamp(7rem, 12vw, 9rem);
+  padding: clamp(1rem, 2vw, 1.25rem);
+  border: 1px solid rgba(255, 255, 255, 0.34);
+  border-radius: 28px;
+  background: linear-gradient(180deg, rgba(255, 253, 253, 0.24) 0%, rgba(255, 242, 244, 0.16) 100%);
+  box-shadow: 0 18px 44px rgba(92, 13, 20, 0.12);
+  backdrop-filter: blur(10px) saturate(135%);
+  -webkit-backdrop-filter: blur(10px) saturate(135%);
   transform: translateZ(0);
+  overflow: hidden;
+}
+
+.loader-mark::before {
+  content: "";
+  position: absolute;
+  inset: 1px;
+  border-radius: inherit;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.34), rgba(255, 255, 255, 0.04) 56%, rgba(159, 24, 38, 0.08));
+  pointer-events: none;
 }
 
 .loader-logo {
@@ -262,6 +280,10 @@ button {
   animation: loaderLogoCycle var(--loader-duration, 1100ms) cubic-bezier(0.22, 0.9, 0.28, 1) both;
 }
 
+.page-loader.is-transitioning .loader-mark {
+  animation: loaderGlassFloat var(--loader-duration, 1100ms) cubic-bezier(0.22, 0.9, 0.28, 1) both;
+}
+
 html.is-transitioning-page .page-loader {
   opacity: 1;
   visibility: visible;
@@ -269,6 +291,10 @@ html.is-transitioning-page .page-loader {
 
 html.is-transitioning-page .loader-logo {
   animation: loaderLogoCycle var(--loader-duration, 1100ms) cubic-bezier(0.22, 0.9, 0.28, 1) both;
+}
+
+html.is-transitioning-page .loader-mark {
+  animation: loaderGlassFloat var(--loader-duration, 1100ms) cubic-bezier(0.22, 0.9, 0.28, 1) both;
 }
 
 html.is-transitioning-page .site-shell,
@@ -1095,6 +1121,25 @@ h3 {
   100% {
     opacity: 0;
     transform: translate3d(0, -10px, 0) scale(0.98);
+  }
+}
+
+@keyframes loaderGlassFloat {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 10px, 0) scale(0.94);
+  }
+  15% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  76% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(0, -8px, 0) scale(0.98);
   }
 }
 
