@@ -1357,7 +1357,7 @@ h3 {
 
 .footer-grid {
   display: grid;
-  grid-template-columns: 1.1fr 0.8fr 1fr 1fr;
+  grid-template-columns: 1.2fr 1fr 1fr;
   gap: 1.5rem;
   padding: 1.8rem;
   border: 1px solid rgba(255, 255, 255, 0.68);
@@ -1373,6 +1373,22 @@ h3 {
   display: grid;
   gap: 0.95rem;
   align-content: start;
+}
+
+.footer-company {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  align-content: flex-start;
+  gap: 0.8rem 1rem;
+}
+
+.footer-company h3 {
+  width: 100%;
+}
+
+.footer-company a {
+  white-space: nowrap;
 }
 
 .footer-logo {
@@ -1569,6 +1585,10 @@ h3 {
   .footer-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+
+  .footer-company {
+    grid-column: 1 / -1;
+  }
 }
 
 @media (max-width: 860px) {
@@ -1668,6 +1688,15 @@ h3 {
   .method-steps-wide,
   .footer-grid {
     grid-template-columns: 1fr;
+  }
+
+  .footer-company {
+    display: grid;
+    gap: 0.95rem;
+  }
+
+  .footer-company a {
+    white-space: normal;
   }
 
   .feature-band,
