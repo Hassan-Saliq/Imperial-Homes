@@ -61,8 +61,8 @@ button {
   position: relative;
   overflow: clip;
   transform-origin: center top;
-  will-change: opacity, transform;
-  transition: opacity 0.24s ease, transform 0.24s ease;
+  will-change: opacity, transform, filter;
+  transition: opacity 0.24s ease, transform 0.24s ease, filter 0.24s ease;
 }
 
 .page-loader {
@@ -73,11 +73,12 @@ button {
   place-items: center;
   opacity: 0;
   visibility: hidden;
-  pointer-events: none;
+  pointer-events: auto;
   contain: paint;
   background: linear-gradient(180deg, rgba(255, 250, 249, 0.12) 0%, rgba(255, 244, 244, 0.18) 100%);
   will-change: opacity;
   transition: opacity 0.12s ease, visibility 0.12s ease;
+  touch-action: none;
 }
 
 .page-loader.is-hidden {
@@ -273,7 +274,7 @@ button {
 .page-loader.is-transitioning {
   opacity: 1;
   visibility: visible;
-  pointer-events: none;
+  pointer-events: auto;
 }
 
 .page-loader.is-transitioning .loader-logo {
@@ -287,6 +288,7 @@ button {
 html.is-transitioning-page .page-loader {
   opacity: 1;
   visibility: visible;
+  pointer-events: auto;
 }
 
 html.is-transitioning-page .loader-logo {
@@ -304,6 +306,11 @@ html.is-transitioning-page .whatsapp-float {
   filter: blur(6px);
   transform: scale(1.01);
   pointer-events: none;
+}
+
+html.is-transitioning-page,
+html.is-transitioning-page body {
+  cursor: progress;
 }
 
 ::view-transition-old(root) {

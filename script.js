@@ -17,6 +17,9 @@ let lastScrollY = window.scrollY;
 let hasFinishedPageEntry = false;
 let isNavigating = false;
 
+const isInputLocked = () =>
+  isNavigating || document.documentElement.classList.contains("is-transitioning-page");
+
 const getTransitionRemainingMs = () => {
   if (!isTransitioningPage) {
     return 0;
@@ -70,6 +73,24 @@ if (isTransitioningPage) {
 
 window.addEventListener("load", finishPageEntry);
 window.addEventListener("pageshow", finishPageEntry);
+
+["pointerdown", "click", "touchend"].forEach((eventName) => {
+  document.addEventListener(
+    eventName,
+    (event) => {
+      if (!isInputLocked()) {
+        return;
+      }
+
+      const target = event.target;
+      if (target instanceof Node && loader?.contains(target)) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+    },
+    true
+  );
+});
 
 const showPageTransition = (href) => {
   if (isNavigating) {
