@@ -1,13 +1,14 @@
 const assistantConfig = {
-  companyName: "Imperial Homes",
-  assistantName: "BuildIQ Concierge",
-  greeting: "Welcome to Imperial Homes. I am BuildIQ Concierge. Ask me about projects, construction services, pricing guidance, or booking a site visit.",
+  companyName: "Imperial Houses",
+  tagline: "D.R Construction & Best Homes",
+  assistantName: "Safa AI",
+  greeting: "Welcome to Imperial Houses. I'm Safa, your AI assistant. How can I help you today?",
   autoGreetingDelayMs: 1200,
   phone: "+919677555912",
   phoneLabel: "+91 96775 55912",
   whatsappNumber: "919677555912",
   whatsappMessage:
-    "Hello Imperial Homes, I would like to know more about your premium construction services and projects.",
+    "Hello Imperial Houses, I would like to know more about your premium construction services and projects.",
   email: "info.imperialhomes@gmail.com",
   promptChips: [
     "Luxury home construction",
@@ -85,7 +86,7 @@ const mountAssistant = () => {
         </form>
       </div>
 
-      <button class="chat-toggle" type="button" aria-expanded="false" aria-controls="chat-panel" aria-label="Open ${assistantConfig.assistantName}">
+      <button class="chat-toggle action-float" type="button" aria-expanded="false" aria-controls="chat-panel" aria-label="Open ${assistantConfig.assistantName}">
         <span class="chat-toggle-glow" aria-hidden="true"></span>
         <span class="chat-toggle-icon" aria-hidden="true">
           <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
@@ -93,21 +94,24 @@ const mountAssistant = () => {
           </svg>
         </span>
         <span class="chat-toggle-text">AI</span>
+        <span class="float-label" aria-hidden="true">Safa AI</span>
       </button>
     </div>
 
     <a
-      class="whatsapp-float"
+      class="whatsapp-float action-float"
       href="${whatsappHref}"
       target="_blank"
       rel="noopener noreferrer"
-      aria-label="Chat with Imperial Homes on WhatsApp"
+      aria-label="Chat with Imperial Houses on WhatsApp"
     >
       ${whatsappIcon}
+      <span class="float-label" aria-hidden="true">Chat with WhatsApp</span>
     </a>
 
-    <a class="call-float" href="tel:${assistantConfig.phone}" aria-label="Call Imperial Homes at ${assistantConfig.phoneLabel}">
+    <a class="call-float action-float" href="tel:${assistantConfig.phone}" aria-label="Contact Imperial Houses at ${assistantConfig.phoneLabel}">
       <span>Call</span>
+      <span class="float-label" aria-hidden="true">Contact Us</span>
     </a>
   `;
 
@@ -378,15 +382,20 @@ const showTypingIndicator = () => {
 
 const getFallbackReply = (message) => {
   const normalizedMessage = message.trim().toLowerCase();
+  const greetingPattern = /^(hi|hello|hey|good morning|good afternoon|good evening)\b/i;
   const strongIntentPattern =
     /\b(buy|price|cost|invest|investment|contact|call|visit|site visit|book|booking|quote|estimate|interested)\b/;
+
+  if (!assistantState.history.some((entry) => entry.role === "user") || greetingPattern.test(normalizedMessage)) {
+    return "Welcome to Imperial Houses. I'm Safa, your AI assistant. How can I help you today?";
+  }
 
   if (strongIntentPattern.test(normalizedMessage)) {
     return "That is great. Our team will contact you shortly.";
   }
 
   if (/\b(joint venture|joint-venture|landowner|land owner|property owner|develop my land)\b/.test(normalizedMessage)) {
-    return "Imperial Homes supports joint venture development for landowners with planning, approvals, construction, branding, and sales coordination.";
+    return "Imperial Houses supports joint venture development for landowners with planning, approvals, construction, branding, and sales coordination.";
   }
 
   if (/\b(price|cost|budget|quote|estimate)\b/.test(normalizedMessage)) {
@@ -398,10 +407,10 @@ const getFallbackReply = (message) => {
   }
 
   if (/\b(service|construction|build|home|renovation|interior|interiors|property development)\b/.test(normalizedMessage)) {
-    return "Imperial Homes supports construction, interiors, renovation, project management, total-home solutions, and premium residential development.";
+    return "Imperial Houses supports construction, interiors, renovation, project management, total-home solutions, and premium residential development.";
   }
 
-  return "Imperial Homes can help with premium construction services, project guidance, joint venture opportunities, pricing direction, and site visit coordination.";
+  return "Imperial Houses can help with premium construction services, project guidance, joint venture opportunities, pricing direction, and site visit coordination.";
 };
 
 const restoreAssistantMessages = () => {
@@ -697,12 +706,50 @@ const setupCounters = () => {
   counters.forEach((counter) => observer.observe(counter));
 };
 
+const setupTextAnimations = () => {
+  const textNodes = document.querySelectorAll(
+    "header a, header button, main h1, main h2, main h3, main p, main li, main span, footer h3, footer p, footer a"
+  );
+
+  textNodes.forEach((node, index) => {
+    if (node.closest(".chat-panel, .float-label")) {
+      return;
+    }
+
+    node.classList.add("text-fade");
+    node.style.setProperty("--text-fade-delay", `${Math.min(index * 20, 320)}ms`);
+  });
+
+  const visibleTextObserver = new IntersectionObserver(
+    (entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add("is-visible");
+          visibleTextObserver.unobserve(entry.target);
+        }
+      });
+    },
+    {
+      threshold: 0.2,
+      rootMargin: "0px 0px -8% 0px",
+    }
+  );
+
+  textNodes.forEach((node) => {
+    if (!node.classList.contains("text-fade")) {
+      return;
+    }
+    visibleTextObserver.observe(node);
+  });
+};
+
 restoreAssistantState();
 restoreAssistantMessages();
 attachAssistantEvents();
 attachJointVentureFormHandler();
 setupLetterAnimations();
 setupCounters();
+setupTextAnimations();
 
 if (isTransitioningPage) {
   loader?.classList.remove("is-hidden");

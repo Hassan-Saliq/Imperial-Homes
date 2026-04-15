@@ -318,6 +318,10 @@ html.is-transitioning-page body {
   justify-content: flex-end;
 }
 
+.action-float {
+  isolation: isolate;
+}
+
 .chat-toggle,
 .whatsapp-float,
 .call-float {
@@ -355,6 +359,36 @@ html.is-transitioning-page body {
 .call-float span {
   position: relative;
   z-index: 1;
+}
+
+.float-label {
+  position: absolute;
+  right: calc(100% + 0.85rem);
+  top: 50%;
+  transform: translate3d(0.8rem, -50%, 0);
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
+  padding: 0.7rem 0.95rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(8, 18, 33, 0.92);
+  color: #ffffff;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 0.28s ease, transform 0.28s ease, visibility 0.28s ease;
+  box-shadow: var(--shadow-soft);
+}
+
+.action-float:hover .float-label,
+.action-float:focus-visible .float-label {
+  opacity: 1;
+  visibility: visible;
+  transform: translate3d(0, -50%, 0);
 }
 
 .chat-toggle-icon {
@@ -755,6 +789,10 @@ p,
 
 .section-accent {
   background: linear-gradient(180deg, rgba(18, 43, 79, 0.34), rgba(10, 20, 37, 0.12));
+}
+
+.section-map-accent {
+  background: linear-gradient(180deg, rgba(30, 58, 95, 0.96), rgba(30, 58, 95, 0.8));
 }
 
 .hero-grid,
@@ -1502,6 +1540,23 @@ p,
   transition-delay: 0.24s;
 }
 
+.text-fade {
+  opacity: 0;
+  transform: translateY(14px);
+  filter: blur(4px);
+  transition:
+    opacity 0.72s ease,
+    transform 0.72s ease,
+    filter 0.72s ease;
+  transition-delay: var(--text-fade-delay, 0ms);
+}
+
+.text-fade.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+  filter: blur(0);
+}
+
 .split-word {
   display: inline-flex;
   flex-wrap: nowrap;
@@ -1614,6 +1669,7 @@ p,
   .hero-media,
   .page-hero-art,
   .reveal,
+  .text-fade,
   .chat-message-typing span,
   .whatsapp-float,
   .split-char,
@@ -1624,6 +1680,12 @@ p,
   }
 
   .split-char {
+    opacity: 1;
+    filter: none;
+    transform: none;
+  }
+
+  .text-fade {
     opacity: 1;
     filter: none;
     transform: none;
@@ -1815,6 +1877,10 @@ p,
     right: 0;
     width: min(100vw - 1rem, 24rem);
     height: min(33rem, calc(100vh - 7rem));
+  }
+
+  .float-label {
+    display: none;
   }
 
   .chat-quick-actions {

@@ -6,7 +6,7 @@ const projectRoot = __dirname;
 const dataDirectory = path.join(projectRoot, "data");
 
 const businessContext = {
-  company: "Imperial Homes",
+  company: "Imperial Houses",
   industry: "Real Estate / Construction",
   tone: "Premium, professional, friendly",
   services: [
@@ -84,7 +84,7 @@ const server = http.createServer(async (request, response) => {
 });
 
 server.listen(port, () => {
-  console.log(`Imperial Homes site running on http://localhost:${port}`);
+  console.log(`Imperial Houses site running on http://localhost:${port}`);
 });
 
 async function handleChat(payload, response) {
@@ -218,6 +218,7 @@ async function generateAiReply(message, history, analysis) {
   const model = process.env.OPENAI_MODEL || "gpt-4.1-mini";
   const systemPrompt = [
     `You are the website sales and support assistant for ${businessContext.company}.`,
+    "You are also known as Safa AI.",
     `Tone: ${businessContext.tone}.`,
     `Industry: ${businessContext.industry}.`,
     `Services: ${businessContext.services.join(", ")}.`,
@@ -225,6 +226,7 @@ async function generateAiReply(message, history, analysis) {
     `Current project highlights: ${businessContext.projects.join("; ")}.`,
     "Keep every answer short, clear, and professional.",
     "Answer as a real estate and construction company assistant, not as a generic AI.",
+    "If the user says hi, hello, or starts the first interaction, reply with exactly: Welcome to Imperial Houses. I'm Safa, your AI assistant. How can I help you today?",
     "If the user shows strong buying or investment intent, asks for price, contact, call, or visit, reply with exactly: That’s great! Our team will contact you shortly.",
     "If pricing is asked, explain briefly that pricing depends on scope, location, and specifications.",
     "If ongoing or completed projects are asked, use the listed project highlights.",
@@ -307,8 +309,12 @@ function analyzeIntent(message) {
 function generateFallbackReply(message, analysis) {
   const normalizedMessage = message.toLowerCase();
 
+  if (/^(hi|hello|hey|good morning|good afternoon|good evening)\b/.test(normalizedMessage)) {
+    return "Welcome to Imperial Houses. I'm Safa, your AI assistant. How can I help you today?";
+  }
+
   if (analysis.primaryIntent === "joint-venture") {
-    return "Imperial Homes works with landowners on transparent joint venture projects covering planning, approvals, construction, and sales coordination.";
+    return "Imperial Houses works with landowners on transparent joint venture projects covering planning, approvals, construction, and sales coordination.";
   }
 
   if (analysis.primaryIntent === "pricing") {
@@ -316,14 +322,14 @@ function generateFallbackReply(message, analysis) {
   }
 
   if (analysis.primaryIntent === "projects") {
-    return "Imperial Homes currently highlights Imperial Regal in Thiruvanmiyur, Imperial Royale in Nanganallur, and Imperial Park along the ECR belt.";
+    return "Imperial Houses currently highlights Imperial Regal in Thiruvanmiyur, Imperial Royale in Nanganallur, and Imperial Park along the ECR belt.";
   }
 
   if (analysis.primaryIntent === "services" || /\b(home|build|construction)\b/.test(normalizedMessage)) {
-    return "Imperial Homes offers building construction, joint venture development, property development, interiors, renovation, and project management.";
+    return "Imperial Houses offers building construction, joint venture development, property development, interiors, renovation, and project management.";
   }
 
-  return "Imperial Homes can help with construction services, joint venture projects, pricing guidance, and current developments. Tell me what you would like to know.";
+  return "Imperial Houses can help with construction services, joint venture projects, pricing guidance, and current developments. Tell me what you would like to know.";
 }
 
 async function notifyOwner(notification) {
@@ -365,7 +371,7 @@ async function notifyOwner(notification) {
         body: JSON.stringify({
           from: process.env.OWNER_EMAIL_FROM,
           to: [process.env.OWNER_EMAIL_TO],
-          subject: "Imperial Homes Lead Notification",
+          subject: "Imperial Houses Lead Notification",
           text,
         }),
       });
