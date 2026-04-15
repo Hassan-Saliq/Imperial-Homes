@@ -1,14 +1,14 @@
 const assistantConfig = {
   companyName: "Imperial Houses",
-  tagline: "D.R Construction & Best Homes",
+  tagline: "Premium Construction & Development",
   assistantName: "Safa AI",
-  greeting: "Welcome to Imperial Houses. Ask about services, pricing, projects, or site visits.",
+  greeting: "Welcome to Imperial Houses. Ask about projects, construction services, timelines, or site meetings.",
   phone: "+919677555912",
   phoneLabel: "+91 96775 55912",
   whatsappNumber: "919677555912",
   ownerWhatsappTemplate: "Hi, I want to discuss a project with Imperial Homes",
   email: "info.imperialhomes@gmail.com",
-  promptChips: ["Project pricing", "Luxury construction", "Joint venture", "Talk to owner"],
+  promptChips: ["Project pricing", "Construction delivery", "Joint venture", "Talk to owner"],
 };
 
 const sessionKey = "imperial-ai-session-id";
@@ -114,7 +114,7 @@ function mountAssistant() {
             </span>
             <div>
               <strong>${assistantConfig.assistantName}</strong>
-              <span data-chat-status>Luxury construction concierge</span>
+              <span data-chat-status>Cinematic construction concierge</span>
             </div>
           </div>
           <button class="chat-close" type="button" aria-label="Close assistant">x</button>
@@ -128,7 +128,7 @@ function mountAssistant() {
         <form class="chat-form" data-chat-form>
           <label class="chat-input-wrap">
             <span class="sr-only">Ask ${assistantConfig.assistantName}</span>
-            <input class="chat-input" data-chat-input type="text" name="message" placeholder="Ask about pricing, projects, services, or contact..." autocomplete="off" required>
+            <input class="chat-input" data-chat-input type="text" name="message" placeholder="Ask about pricing, delivery, projects, or site meetings..." autocomplete="off" required>
           </label>
           <button class="chat-send" type="submit">Send</button>
         </form>
