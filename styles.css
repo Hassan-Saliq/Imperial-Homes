@@ -2679,21 +2679,22 @@ body[data-page="home"] .nav-toggle {
 }
 
 .home-cinema {
-  min-height: auto;
-  padding: 2.2rem 0 0.75rem;
+  min-height: 100vh;
+  padding: 0;
 }
 
 .home-video-shell {
   width: 100vw;
   margin-left: calc(50% - 50vw);
   margin-right: calc(50% - 50vw);
+  min-height: 100vh;
 }
 
 .home-video-frame {
   position: relative;
   overflow: hidden;
   width: 100%;
-  min-height: min(46rem, 82vh);
+  min-height: 100vh;
   border-radius: 0;
   border: 0;
   background: #08111f;
@@ -2703,10 +2704,8 @@ body[data-page="home"] .nav-toggle {
 .home-video {
   width: 100%;
   height: 100%;
-  min-height: min(46rem, 82vh);
+  min-height: 100vh;
   object-fit: cover;
-  transform: scale(1.12);
-  transform-origin: center center;
 }
 
 .home-video-overlay {
@@ -2760,12 +2759,13 @@ body[data-page="home"] .hero-video-overlay {
 
 @media (max-width: 860px) {
   .home-cinema {
-    padding-top: 1.5rem;
+    min-height: 100svh;
   }
 
+  .home-video-shell,
   .home-video-frame,
   .home-video {
-    min-height: min(31rem, 60vh);
+    min-height: 100svh;
   }
 
   body[data-page="home"] .topbar-inner {
@@ -2774,9 +2774,10 @@ body[data-page="home"] .hero-video-overlay {
 }
 
 @media (max-width: 640px) {
+  .home-video-shell,
   .home-video-frame,
   .home-video {
-    min-height: 15rem;
+    min-height: 100svh;
   }
 
   .home-intro {
