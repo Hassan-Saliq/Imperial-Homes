@@ -2561,3 +2561,98 @@ h2 .text-accent {
     min-width: min(18rem, calc(100vw - 1rem));
   }
 }
+
+/* Alignment and no-blur corrections */
+
+.topbar-inner,
+.hero-card,
+.feature-band,
+.stat-card,
+.page-card,
+.project-card,
+.service-card,
+.why-item,
+.method-step,
+.contact-card,
+.joint-venture-form,
+.cta-panel,
+.story-card,
+.showcase-card,
+.location-card,
+.chat-panel,
+.map-shell,
+.contact-popup,
+.footer-grid,
+.site-nav,
+.page-loader .loader-mark {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+.reveal,
+.reveal.is-visible,
+.text-fade,
+.text-fade.is-visible,
+.split-char,
+.split-word.is-visible .split-char {
+  filter: none !important;
+}
+
+.hero-orb,
+body::before,
+body::after,
+.hero-media::before,
+.hero-media::after,
+.page-hero-art::before,
+.page-hero-art::after,
+.chat-toggle-glow {
+  filter: none !important;
+}
+
+.hero,
+.page-hero {
+  padding-top: 3.5rem;
+}
+
+.page-hero {
+  min-height: calc(100vh - 7.5rem);
+  display: grid;
+  align-items: center;
+}
+
+.hero-grid,
+.page-hero-grid,
+.section-grid,
+.contact-grid,
+.joint-venture-grid,
+.story-grid,
+.location-grid {
+  align-items: center;
+}
+
+.page-hero-copy,
+.hero-copy,
+.contact-copy,
+.joint-venture-copy {
+  align-self: center;
+}
+
+.page-hero-art,
+.hero-visual {
+  align-self: center;
+}
+
+.hero-home {
+  min-height: calc(100vh - 6rem);
+}
+
+@media (max-width: 860px) {
+  .hero,
+  .page-hero {
+    padding-top: 2.25rem;
+  }
+
+  .page-hero {
+    min-height: auto;
+  }
+}
