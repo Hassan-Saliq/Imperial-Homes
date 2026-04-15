@@ -7,8 +7,19 @@ const dataDirectory = path.join(projectRoot, "data");
 
 const businessContext = {
   company: "Imperial Houses",
+  tagline: "D.R Construction & Best Homes",
   industry: "Real Estate / Construction",
   tone: "Premium, professional, friendly",
+  locations: ["Chennai", "Thiruvanmiyur", "Nanganallur", "ECR Belt"],
+  offices: [
+    "No. 6, 13th East Street, Kamaraj Nagar, Thiruvanmiyur, Chennai - 600041",
+    "No. 12/21, 45th Street, Nanganallur, Chennai - 600061",
+  ],
+  contacts: [
+    "Phone: +91 96775 55912",
+    "Phone: +91 96776 66812",
+    "Email: info.imperialhomes@gmail.com",
+  ],
   services: [
     "Building construction",
     "Joint venture projects",
@@ -28,6 +39,7 @@ const businessContext = {
     "Imperial Royale - ready to occupy - Nanganallur, Chennai - 2 & 3 BHK",
     "Imperial Park - featured layout - ECR Belt, Chennai - community layout",
   ],
+  process: ["Define", "Design", "Determine", "Develop", "Deliver"],
 };
 
 const mimeTypes = {
@@ -219,18 +231,25 @@ async function generateAiReply(message, history, analysis) {
   const systemPrompt = [
     `You are the website sales and support assistant for ${businessContext.company}.`,
     "You are also known as Safa AI.",
+    `Tagline: ${businessContext.tagline}.`,
     `Tone: ${businessContext.tone}.`,
     `Industry: ${businessContext.industry}.`,
+    `Office locations: ${businessContext.offices.join("; ")}.`,
+    `Service areas: ${businessContext.locations.join(", ")}.`,
+    `Primary contacts: ${businessContext.contacts.join("; ")}.`,
     `Services: ${businessContext.services.join(", ")}.`,
     `Target customers: ${businessContext.target.join(", ")}.`,
     `Current project highlights: ${businessContext.projects.join("; ")}.`,
+    `Process: ${businessContext.process.join(", ")}.`,
     "Keep every answer short, clear, and professional.",
     "Answer as a real estate and construction company assistant, not as a generic AI.",
     "If the user says hi, hello, or starts the first interaction, reply with exactly: Welcome to Imperial Houses. I'm Safa, your AI assistant. How can I help you today?",
+    "Answer questions about services, locations, project types, process, contact details, joint ventures, interiors, and construction naturally using the business context.",
     "If the user shows strong buying or investment intent, asks for price, contact, call, or visit, reply with exactly: That’s great! Our team will contact you shortly.",
     "If pricing is asked, explain briefly that pricing depends on scope, location, and specifications.",
     "If ongoing or completed projects are asked, use the listed project highlights.",
     "If the request needs a human team, say the team will contact them shortly.",
+    "If a detail is not available on the website, say that clearly and invite the user to share the requirement for a follow-up.",
     `Detected intent: ${analysis.primaryIntent}.`,
   ].join(" ");
 
@@ -317,6 +336,14 @@ function generateFallbackReply(message, analysis) {
     return "Imperial Houses works with landowners on transparent joint venture projects covering planning, approvals, construction, and sales coordination.";
   }
 
+  if (/\b(where|location|office|address|located|nanganallur|thiruvanmiyur|chennai)\b/.test(normalizedMessage)) {
+    return "Imperial Houses works across Chennai, including Thiruvanmiyur, Nanganallur, and the ECR belt, with offices in Thiruvanmiyur and Nanganallur.";
+  }
+
+  if (/\b(phone|email|whatsapp|contact details|reach)\b/.test(normalizedMessage)) {
+    return "You can reach Imperial Houses at +91 96775 55912, +91 96776 66812, or info.imperialhomes@gmail.com. WhatsApp is also available from the floating button.";
+  }
+
   if (analysis.primaryIntent === "pricing") {
     return "Pricing depends on the scope, location, specifications, and project type. Share your requirement and our team can guide you better.";
   }
@@ -327,6 +354,14 @@ function generateFallbackReply(message, analysis) {
 
   if (analysis.primaryIntent === "services" || /\b(home|build|construction)\b/.test(normalizedMessage)) {
     return "Imperial Houses offers building construction, joint venture development, property development, interiors, renovation, and project management.";
+  }
+
+  if (/\b(interior|interiors|design)\b/.test(normalizedMessage)) {
+    return "Imperial Houses delivers luxury interiors, design coordination, total home solutions, and premium finishing for residential spaces.";
+  }
+
+  if (/\b(method|process|timeline|steps|how do you work)\b/.test(normalizedMessage)) {
+    return "Imperial Houses follows a five-step method: Define, Design, Determine, Develop, and Deliver, so clients can track every phase clearly.";
   }
 
   return "Imperial Houses can help with construction services, joint venture projects, pricing guidance, and current developments. Tell me what you would like to know.";

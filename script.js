@@ -12,8 +12,8 @@ const assistantConfig = {
   email: "info.imperialhomes@gmail.com",
   promptChips: [
     "Luxury home construction",
+    "Project locations",
     "Renovation and interiors",
-    "Joint venture projects",
     "Book a site visit",
   ],
 };
@@ -21,6 +21,13 @@ const assistantConfig = {
 const assistantSessionKey = "imperial-ai-session-id";
 const assistantStateKey = "imperial-ai-chat-state";
 const assistantAutoGreetKey = "imperial-ai-greeted";
+const hoverVideoLibrary = {
+  siteProgress: "https://videos.pexels.com/video-files/1197802/1197802-hd_1920_1080_25fps.mp4",
+  skylineBuild: "https://videos.pexels.com/video-files/5567711/5567711-hd_1920_1080_30fps.mp4",
+  towerTimelapse: "https://videos.pexels.com/video-files/6164053/6164053-hd_1920_1080_30fps.mp4",
+  interiorFlow: "https://videos.pexels.com/video-files/6587490/6587490-hd_1920_1080_30fps.mp4",
+  steelFrame: "https://videos.pexels.com/video-files/19137069/19137069-uhd_2560_1440_60fps.mp4",
+};
 
 const whatsappIcon = `
   <svg viewBox="0 0 32 32" focusable="false" aria-hidden="true">
@@ -94,7 +101,7 @@ const mountAssistant = () => {
           </svg>
         </span>
         <span class="chat-toggle-text">AI</span>
-        <span class="float-label" aria-hidden="true">Safa AI</span>
+        <span class="float-label" aria-hidden="true">Chat with SAFA AI</span>
       </button>
     </div>
 
@@ -398,12 +405,28 @@ const getFallbackReply = (message) => {
     return "Imperial Houses supports joint venture development for landowners with planning, approvals, construction, branding, and sales coordination.";
   }
 
+  if (/\b(where|location|office|address|located|nanganallur|thiruvanmiyur|chennai)\b/.test(normalizedMessage)) {
+    return "Imperial Houses operates in Chennai, with offices in Thiruvanmiyur and Nanganallur, and supports projects across premium residential growth corridors.";
+  }
+
+  if (/\b(phone|email|contact details|whatsapp|reach)\b/.test(normalizedMessage)) {
+    return "You can reach Imperial Houses by phone at +91 96775 55912 or +91 96776 66812, by email at info.imperialhomes@gmail.com, or through WhatsApp from the floating button.";
+  }
+
   if (/\b(price|cost|budget|quote|estimate)\b/.test(normalizedMessage)) {
     return "Pricing depends on scope, location, specifications, and finish level. Share your requirement and our team can guide you on the best next step.";
   }
 
   if (/\b(ongoing|completed|project|projects|apartment)\b/.test(normalizedMessage)) {
     return "Current highlights include Imperial Regal in Thiruvanmiyur, Imperial Royale in Nanganallur, and Imperial Park along the ECR belt.";
+  }
+
+  if (/\b(interior|interiors|luxury interior|design)\b/.test(normalizedMessage)) {
+    return "Imperial Houses handles luxury interior design, premium detailing, total home solutions, and integrated residential finishing with one coordinated team.";
+  }
+
+  if (/\b(method|process|timeline|how do you work|steps)\b/.test(normalizedMessage)) {
+    return "Our method follows five stages: Define, Design, Determine, Develop, and Deliver, so every project remains clear, trackable, and professionally managed.";
   }
 
   if (/\b(service|construction|build|home|renovation|interior|interiors|property development)\b/.test(normalizedMessage)) {
@@ -743,6 +766,123 @@ const setupTextAnimations = () => {
   });
 };
 
+const attachHoverMedia = (targetImage, { hoverImageSrc, videoKey }) => {
+  if (!(targetImage instanceof HTMLImageElement) || targetImage.dataset.hoverEnhanced === "1") {
+    return;
+  }
+
+  const videoSrc = hoverVideoLibrary[videoKey];
+  if (!hoverImageSrc && !videoSrc) {
+    return;
+  }
+
+  targetImage.dataset.hoverEnhanced = "1";
+
+  const wrapper = document.createElement("div");
+  wrapper.className = "media-swap";
+  targetImage.parentNode?.insertBefore(wrapper, targetImage);
+  wrapper.append(targetImage);
+  targetImage.classList.add("media-base");
+
+  if (hoverImageSrc) {
+    const hoverImage = document.createElement("img");
+    hoverImage.className = "media-hover-image";
+    hoverImage.src = hoverImageSrc;
+    hoverImage.alt = "";
+    hoverImage.loading = "lazy";
+    hoverImage.setAttribute("aria-hidden", "true");
+    wrapper.append(hoverImage);
+  }
+
+  let hoverVideo = null;
+  if (videoSrc) {
+    hoverVideo = document.createElement("video");
+    hoverVideo.className = "media-hover-video";
+    hoverVideo.muted = true;
+    hoverVideo.loop = true;
+    hoverVideo.playsInline = true;
+    hoverVideo.preload = "none";
+    hoverVideo.poster = targetImage.currentSrc || targetImage.src;
+    hoverVideo.setAttribute("aria-hidden", "true");
+    hoverVideo.src = videoSrc;
+    hoverVideo.addEventListener("canplay", () => {
+      wrapper.classList.add("is-video-ready");
+    });
+    wrapper.append(hoverVideo);
+  }
+
+  const activate = () => {
+    wrapper.classList.add("is-active");
+    hoverVideo?.play().catch(() => {});
+  };
+
+  const deactivate = () => {
+    wrapper.classList.remove("is-active");
+    if (hoverVideo) {
+      hoverVideo.pause();
+    }
+  };
+
+  wrapper.addEventListener("mouseenter", activate);
+  wrapper.addEventListener("mouseleave", deactivate);
+  wrapper.addEventListener("focusin", activate);
+  wrapper.addEventListener("focusout", deactivate);
+};
+
+const setupHoverMedia = () => {
+  attachHoverMedia(document.querySelector(".hero-image"), {
+    hoverImageSrc: "assets/project-royale-real.jpg",
+    videoKey: "siteProgress",
+  });
+
+  [
+    [".page-hero-image-about", "assets/projects-hero-real.jpg", "skylineBuild"],
+    [".page-hero-image-contact", "assets/service-management-real.jpg", "interiorFlow"],
+    [".page-hero-image-projects", "assets/project-regal-real.jpg", "towerTimelapse"],
+    [".page-hero-image-services", "assets/service-interiors-real.jpg", "interiorFlow"],
+    [".page-hero-image-joint-venture", "assets/projects-hero-real.jpg", "steelFrame"],
+    [".page-hero-image-method", "assets/service-construction-real.jpg", "siteProgress"],
+  ].forEach(([selector, imageSrc, videoKey]) => {
+    attachHoverMedia(document.querySelector(selector), {
+      hoverImageSrc: imageSrc,
+      videoKey,
+    });
+  });
+
+  document.querySelectorAll(".showcase-image").forEach((image, index) => {
+    const hoverConfigs = [
+      ["assets/project-regal-real.jpg", "siteProgress"],
+      ["assets/service-total-home-real.jpg", "interiorFlow"],
+      ["assets/project-royale-real.jpg", "towerTimelapse"],
+    ];
+    const [hoverImageSrc, videoKey] = hoverConfigs[index] || hoverConfigs[0];
+    attachHoverMedia(image, { hoverImageSrc, videoKey });
+  });
+
+  document.querySelectorAll(".service-image").forEach((image, index) => {
+    const hoverConfigs = [
+      ["assets/projects-hero-real.jpg", "skylineBuild"],
+      ["assets/home-hero-real.jpg", "steelFrame"],
+      ["assets/contact-hero-real.jpg", "siteProgress"],
+      ["assets/about-hero-real.jpg", "interiorFlow"],
+      ["assets/service-design-real.jpg", "towerTimelapse"],
+      ["assets/method-hero-real.jpg", "siteProgress"],
+    ];
+    const [hoverImageSrc, videoKey] = hoverConfigs[index] || hoverConfigs[0];
+    attachHoverMedia(image, { hoverImageSrc, videoKey });
+  });
+
+  document.querySelectorAll(".project-image").forEach((image, index) => {
+    const hoverConfigs = [
+      ["assets/projects-hero-real.jpg", "towerTimelapse"],
+      ["assets/home-hero-real.jpg", "steelFrame"],
+      ["assets/service-design-real.jpg", "siteProgress"],
+    ];
+    const [hoverImageSrc, videoKey] = hoverConfigs[index] || hoverConfigs[0];
+    attachHoverMedia(image, { hoverImageSrc, videoKey });
+  });
+};
+
 restoreAssistantState();
 restoreAssistantMessages();
 attachAssistantEvents();
@@ -750,6 +890,7 @@ attachJointVentureFormHandler();
 setupLetterAnimations();
 setupCounters();
 setupTextAnimations();
+setupHoverMedia();
 
 if (isTransitioningPage) {
   loader?.classList.remove("is-hidden");
