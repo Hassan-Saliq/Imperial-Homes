@@ -595,43 +595,7 @@ function setupCounters() {
 }
 
 function setupParallax() {
-  const nodes = document.querySelectorAll(".hero-video, .hero-orb, .hero-card");
-  if (!nodes.length) {
-    return;
-  }
-
-  const update = () => {
-    const scrollY = window.scrollY || 0;
-    nodes.forEach((node) => {
-      if (node.classList.contains("hero-video")) {
-        node.style.transform = `translate3d(0, ${scrollY * 0.08}px, 0) scale(1.06)`;
-        return;
-      }
-
-      if (node.classList.contains("hero-card")) {
-        node.style.transform = `translate3d(0, ${scrollY * -0.03}px, 0)`;
-        return;
-      }
-
-      node.style.transform = `translate3d(0, ${scrollY * 0.05}px, 0)`;
-    });
-  };
-
-  let ticking = false;
-  const onScroll = () => {
-    if (ticking) {
-      return;
-    }
-    ticking = true;
-    requestAnimationFrame(() => {
-      update();
-      ticking = false;
-    });
-  };
-
-  update();
-  window.addEventListener("scroll", onScroll, { passive: true });
-  window.addEventListener("resize", onScroll);
+  return;
 }
 
 function prefetchPage(url) {
