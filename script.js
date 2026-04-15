@@ -2,32 +2,40 @@ const assistantConfig = {
   companyName: "Imperial Houses",
   tagline: "D.R Construction & Best Homes",
   assistantName: "Safa AI",
-  greeting: "Welcome to Imperial Houses. I'm Safa, your AI assistant. How can I help you today?",
-  autoGreetingDelayMs: 1200,
+  greeting: "Welcome to Imperial Houses. Ask about services, pricing, projects, or site visits.",
   phone: "+919677555912",
   phoneLabel: "+91 96775 55912",
   whatsappNumber: "919677555912",
-  whatsappMessage:
-    "Hello Imperial Houses, I would like to know more about your premium construction services and projects.",
+  ownerWhatsappTemplate: "Hi, I want to discuss a project with Imperial Homes",
   email: "info.imperialhomes@gmail.com",
-  promptChips: [
-    "Luxury home construction",
-    "Project locations",
-    "Renovation and interiors",
-    "Book a site visit",
-  ],
+  promptChips: ["Project pricing", "Luxury construction", "Joint venture", "Talk to owner"],
 };
 
-const assistantSessionKey = "imperial-ai-session-id";
-const assistantStateKey = "imperial-ai-chat-state";
-const assistantAutoGreetKey = "imperial-ai-greeted";
-const hoverVideoLibrary = {
-  siteProgress: "https://videos.pexels.com/video-files/1197802/1197802-hd_1920_1080_25fps.mp4",
-  skylineBuild: "https://videos.pexels.com/video-files/5567711/5567711-hd_1920_1080_30fps.mp4",
-  towerTimelapse: "https://videos.pexels.com/video-files/6164053/6164053-hd_1920_1080_30fps.mp4",
-  interiorFlow: "https://videos.pexels.com/video-files/6587490/6587490-hd_1920_1080_30fps.mp4",
-  steelFrame: "https://videos.pexels.com/video-files/19137069/19137069-uhd_2560_1440_60fps.mp4",
+const sessionKey = "imperial-ai-session-id";
+const stateKey = "imperial-ai-chat-state";
+const transitionStorageKey = "imperial-page-transition";
+const transitionStartedAtKey = "imperial-page-transition-started-at";
+const transitionDurationMs = 1100;
+const transitionNavigateDelayMs = 80;
+const currentPage = document.body.dataset.page || "home";
+const isTransitioningPage = document.documentElement.classList.contains("is-transitioning-page");
+
+const assistantState = {
+  sessionId: "",
+  history: [],
+  messages: [],
+  isPending: false,
 };
+
+const loader = document.querySelector(".page-loader");
+const navToggle = document.querySelector(".nav-toggle");
+const siteNav = document.querySelector(".site-nav");
+const navLinks = document.querySelectorAll(".site-nav a");
+const topbar = document.querySelector(".topbar");
+const prefetchedPages = new Set();
+let isNavigating = false;
+let lastScrollY = window.scrollY;
+let typingIndicator = null;
 
 const whatsappIcon = `
   <svg viewBox="0 0 32 32" focusable="false" aria-hidden="true">
@@ -35,18 +43,65 @@ const whatsappIcon = `
   </svg>
 `;
 
-const mountAssistant = () => {
+function buildWhatsappLink(message = assistantConfig.ownerWhatsappTemplate) {
+  return `https://wa.me/${assistantConfig.whatsappNumber}?text=${encodeURIComponent(message)}`;
+}
+
+function createSessionId() {
+  return `imperial-${Math.random().toString(36).slice(2, 10)}-${Date.now().toString(36)}`;
+}
+
+function getSessionId() {
+  try {
+    const stored = sessionStorage.getItem(sessionKey);
+    if (stored) {
+      return stored;
+    }
+    const sessionId = createSessionId();
+    sessionStorage.setItem(sessionKey, sessionId);
+    return sessionId;
+  } catch {
+    return createSessionId();
+  }
+}
+
+function persistAssistantState() {
+  try {
+    sessionStorage.setItem(
+      stateKey,
+      JSON.stringify({
+        sessionId: assistantState.sessionId,
+        messages: assistantState.messages.slice(-18),
+        history: assistantState.history.slice(-12),
+      })
+    );
+  } catch {}
+}
+
+function restoreAssistantState() {
+  assistantState.sessionId = getSessionId();
+
+  try {
+    const raw = sessionStorage.getItem(stateKey);
+    if (!raw) {
+      return;
+    }
+    const parsed = JSON.parse(raw);
+    assistantState.messages = Array.isArray(parsed.messages) ? parsed.messages : [];
+    assistantState.history = Array.isArray(parsed.history) ? parsed.history : [];
+  } catch {
+    assistantState.messages = [];
+    assistantState.history = [];
+  }
+}
+
+function mountAssistant() {
   document.querySelectorAll(".chat-widget, .whatsapp-float, .call-float, .floating-contact-stack").forEach((node) => {
     node.remove();
   });
 
   const stack = document.createElement("div");
   stack.className = "floating-contact-stack";
-
-  const whatsappHref = `https://wa.me/${assistantConfig.whatsappNumber}?text=${encodeURIComponent(
-    assistantConfig.whatsappMessage
-  )}`;
-
   stack.innerHTML = `
     <div class="chat-widget" data-ai-assistant>
       <div id="chat-panel" class="chat-panel" aria-hidden="true" role="dialog" aria-label="${assistantConfig.assistantName}">
@@ -54,45 +109,30 @@ const mountAssistant = () => {
           <div class="chat-panel-brand">
             <span class="chat-panel-badge" aria-hidden="true">
               <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
-                <path d="M12 1.5 14.5 9l7.5 2.5-7.5 2.5L12 21.5 9.5 14 2 11.5 9.5 9 12 1.5Z"></path>
+                <path d="M12 1.5 14.6 8.9 22 11.5l-7.4 2.6L12 21.5l-2.6-7.4L2 11.5l7.4-2.6L12 1.5Z"></path>
               </svg>
             </span>
             <div>
               <strong>${assistantConfig.assistantName}</strong>
-              <span data-chat-status>Premium construction assistant</span>
+              <span data-chat-status>Luxury construction concierge</span>
             </div>
           </div>
           <button class="chat-close" type="button" aria-label="Close assistant">x</button>
         </div>
-
-        <div class="chat-quick-actions" aria-label="Suggested questions">
+        <div class="chat-quick-actions">
           ${assistantConfig.promptChips
-            .map(
-              (chip) =>
-                `<button class="chat-chip" type="button" data-quick-message="${chip}">${chip}</button>`
-            )
+            .map((chip) => `<button class="chat-chip" type="button" data-quick-message="${chip}">${chip}</button>`)
             .join("")}
         </div>
-
         <div class="chat-messages" data-chat-messages aria-live="polite"></div>
-
         <form class="chat-form" data-chat-form>
           <label class="chat-input-wrap">
             <span class="sr-only">Ask ${assistantConfig.assistantName}</span>
-            <input
-              class="chat-input"
-              data-chat-input
-              type="text"
-              name="message"
-              placeholder="Ask about services, projects, pricing, or site visits..."
-              autocomplete="off"
-              required
-            >
+            <input class="chat-input" data-chat-input type="text" name="message" placeholder="Ask about pricing, projects, services, or contact..." autocomplete="off" required>
           </label>
           <button class="chat-send" type="submit">Send</button>
         </form>
       </div>
-
       <button class="chat-toggle action-float" type="button" aria-expanded="false" aria-controls="chat-panel" aria-label="Open ${assistantConfig.assistantName}">
         <span class="chat-toggle-glow" aria-hidden="true"></span>
         <span class="chat-toggle-icon" aria-hidden="true">
@@ -100,242 +140,54 @@ const mountAssistant = () => {
             <path d="M12 1.5 14.6 8.9 22 11.5l-7.4 2.6L12 21.5l-2.6-7.4L2 11.5l7.4-2.6L12 1.5Z"></path>
           </svg>
         </span>
-        <span class="chat-toggle-text">AI</span>
-        <span class="float-label" aria-hidden="true">Chat with SAFA AI</span>
+        <span class="float-label" aria-hidden="true">Hover to chat</span>
       </button>
     </div>
-
-    <a
-      class="whatsapp-float action-float"
-      href="${whatsappHref}"
-      target="_blank"
-      rel="noopener noreferrer"
-      aria-label="Chat with Imperial Houses on WhatsApp"
-    >
-      ${whatsappIcon}
-      <span class="float-label" aria-hidden="true">Chat with WhatsApp</span>
-    </a>
-
-    <a class="call-float action-float" href="tel:${assistantConfig.phone}" aria-label="Contact Imperial Houses at ${assistantConfig.phoneLabel}">
-      <span>Call</span>
-      <span class="float-label" aria-hidden="true">Contact Us</span>
-    </a>
+    <div class="action-float" data-hover-popup>
+      <a class="whatsapp-float" href="${buildWhatsappLink()}" target="_blank" rel="noopener noreferrer" aria-label="Chat with Imperial Houses on WhatsApp">
+        ${whatsappIcon}
+        <span class="float-label" aria-hidden="true">WhatsApp</span>
+      </a>
+      <div class="contact-popup" aria-hidden="true">
+        <p>Start a project discussion directly on WhatsApp.</p>
+        <a class="contact-popup-link" href="${buildWhatsappLink()}" target="_blank" rel="noopener noreferrer">Open WhatsApp</a>
+      </div>
+    </div>
+    <div class="action-float" data-hover-popup>
+      <a class="call-float" href="tel:${assistantConfig.phone}" aria-label="Contact Imperial Houses at ${assistantConfig.phoneLabel}">
+        <span>Call</span>
+        <span class="float-label" aria-hidden="true">Call us</span>
+      </a>
+      <div class="contact-popup" aria-hidden="true">
+        <p>Speak to the team directly at ${assistantConfig.phoneLabel}.</p>
+        <a class="contact-popup-link" href="tel:${assistantConfig.phone}">Call now</a>
+      </div>
+    </div>
   `;
 
   document.body.append(stack);
-};
+}
 
-mountAssistant();
-
-const loader = document.querySelector(".page-loader");
-const navToggle = document.querySelector(".nav-toggle");
-const siteNav = document.querySelector(".site-nav");
-const navLinks = document.querySelectorAll(".site-nav a");
-const revealItems = document.querySelectorAll(".reveal");
-const currentPage = document.body.dataset.page;
-const topbar = document.querySelector(".topbar");
-const assistantRoot = document.querySelector("[data-ai-assistant]");
-const chatToggle = assistantRoot?.querySelector(".chat-toggle");
-const chatPanel = assistantRoot?.querySelector(".chat-panel");
-const chatClose = assistantRoot?.querySelector(".chat-close");
-const chatMessages = assistantRoot?.querySelector("[data-chat-messages]");
-const chatForm = assistantRoot?.querySelector("[data-chat-form]");
-const chatInput = assistantRoot?.querySelector("[data-chat-input]");
-const chatStatus = assistantRoot?.querySelector("[data-chat-status]");
-const chatChips = assistantRoot?.querySelectorAll("[data-quick-message]");
-const prefetchedPages = new Set();
-const transitionStorageKey = "imperial-page-transition";
-const transitionStartedAtKey = "imperial-page-transition-started-at";
-const transitionDurationMs = 1100;
-const transitionNavigateDelayMs = 80;
-const isTransitioningPage = document.documentElement.classList.contains("is-transitioning-page");
-let lastScrollY = window.scrollY;
-let hasFinishedPageEntry = false;
-let isNavigating = false;
-let typingIndicator = null;
-
-const assistantState = {
-  sessionId: "",
-  history: [],
-  messages: [],
-  isRequestPending: false,
-};
-
-const isInputLocked = () =>
-  isNavigating || document.documentElement.classList.contains("is-transitioning-page");
-
-const getTransitionRemainingMs = () => {
-  if (!isTransitioningPage) {
-    return 0;
-  }
-
-  try {
-    const startedAt = Number(sessionStorage.getItem(transitionStartedAtKey));
-    if (Number.isFinite(startedAt) && startedAt > 0) {
-      return Math.max(0, transitionDurationMs - (Date.now() - startedAt));
-    }
-  } catch (error) {}
-
-  return transitionDurationMs;
-};
-
-const hideLoader = () => {
-  loader?.classList.add("is-hidden");
-  loader?.classList.remove("is-transitioning");
-  loader?.style.removeProperty("--loader-duration");
-};
-
-const finishPageEntry = () => {
-  if (!isTransitioningPage || hasFinishedPageEntry) {
-    hideLoader();
-    return;
-  }
-
-  hasFinishedPageEntry = true;
-  const remainingMs = getTransitionRemainingMs();
-  loader?.style.setProperty("--loader-duration", `${remainingMs}ms`);
-
-  window.setTimeout(() => {
-    hideLoader();
-    document.documentElement.classList.remove("is-transitioning-page");
-    try {
-      sessionStorage.removeItem(transitionStorageKey);
-      sessionStorage.removeItem(transitionStartedAtKey);
-    } catch (error) {}
-  }, remainingMs);
-};
-
-const showPageTransition = (href) => {
-  if (isNavigating) {
-    return;
-  }
-
-  isNavigating = true;
-
-  if (!loader) {
-    window.location.href = href;
-    return;
-  }
-
-  try {
-    sessionStorage.setItem(transitionStorageKey, "1");
-    sessionStorage.setItem(transitionStartedAtKey, String(Date.now()));
-  } catch (error) {}
-
-  document.documentElement.classList.add("is-transitioning-page");
-  loader.classList.remove("is-hidden");
-  loader.classList.add("is-transitioning");
-  loader.style.setProperty("--loader-duration", `${transitionDurationMs}ms`);
-  window.setTimeout(() => {
-    window.location.href = href;
-  }, transitionNavigateDelayMs);
-};
-
-const prefetchPage = (url) => {
-  if (prefetchedPages.has(url.href)) {
-    return;
-  }
-
-  prefetchedPages.add(url.href);
-
-  const prefetchLink = document.createElement("link");
-  prefetchLink.rel = "prefetch";
-  prefetchLink.href = url.href;
-  prefetchLink.as = "document";
-  document.head.append(prefetchLink);
-};
-
-const shouldHandleAsInternalPage = (url, link) =>
-  url.origin === window.location.origin &&
-  (url.protocol === "http:" || url.protocol === "https:") &&
-  !link.hasAttribute("download") &&
-  link.target !== "_blank";
-
-const prefetchAllInternalPages = () => {
-  document.querySelectorAll("a[href]").forEach((link) => {
-    const url = new URL(link.href, window.location.href);
-
-    if (shouldHandleAsInternalPage(url, link) && url.pathname !== window.location.pathname) {
-      prefetchPage(url);
-    }
-  });
-};
-
-const setChatStatus = (message) => {
+function setChatStatus(message) {
+  const chatStatus = document.querySelector("[data-chat-status]");
   if (chatStatus) {
     chatStatus.textContent = message;
   }
-};
+}
 
-const createSessionId = () =>
-  `imperial-${Math.random().toString(36).slice(2, 10)}-${Date.now().toString(36)}`;
-
-const getAssistantSessionId = () => {
-  try {
-    const stored = sessionStorage.getItem(assistantSessionKey);
-    if (stored) {
-      return stored;
-    }
-    const sessionId = createSessionId();
-    sessionStorage.setItem(assistantSessionKey, sessionId);
-    return sessionId;
-  } catch (error) {
-    return createSessionId();
-  }
-};
-
-const persistAssistantState = () => {
-  try {
-    sessionStorage.setItem(
-      assistantStateKey,
-      JSON.stringify({
-        sessionId: assistantState.sessionId,
-        messages: assistantState.messages.slice(-18),
-        history: assistantState.history.slice(-12),
-      })
-    );
-  } catch (error) {}
-};
-
-const restoreAssistantState = () => {
-  assistantState.sessionId = getAssistantSessionId();
-
-  try {
-    const rawState = sessionStorage.getItem(assistantStateKey);
-    if (!rawState) {
-      return;
-    }
-
-    const parsed = JSON.parse(rawState);
-    if (Array.isArray(parsed.messages)) {
-      assistantState.messages = parsed.messages.filter(
-        (entry) => entry && typeof entry.role === "string" && typeof entry.content === "string"
-      );
-    }
-
-    if (Array.isArray(parsed.history)) {
-      assistantState.history = parsed.history.filter(
-        (entry) => entry && typeof entry.role === "string" && typeof entry.content === "string"
-      );
-    }
-  } catch (error) {
-    assistantState.messages = [];
-    assistantState.history = [];
-  }
-};
-
-const scrollMessagesToBottom = () => {
-  if (!chatMessages) {
+function scrollMessagesToBottom() {
+  const container = document.querySelector("[data-chat-messages]");
+  if (!container) {
     return;
   }
-
-  window.requestAnimationFrame(() => {
-    chatMessages.scrollTop = chatMessages.scrollHeight;
+  requestAnimationFrame(() => {
+    container.scrollTop = container.scrollHeight;
   });
-};
+}
 
-const renderMessage = (role, content, options = {}) => {
-  if (!chatMessages || !content) {
+function renderMessage(role, payload, options = {}) {
+  const container = document.querySelector("[data-chat-messages]");
+  if (!container || !payload || !payload.content) {
     return null;
   }
 
@@ -344,172 +196,199 @@ const renderMessage = (role, content, options = {}) => {
 
   const bubble = document.createElement("div");
   bubble.className = "chat-message-bubble";
-  bubble.textContent = content;
+
+  const content = document.createElement("div");
+  content.textContent = payload.content;
+  bubble.append(content);
+
+  if (Array.isArray(payload.actions) && payload.actions.length) {
+    const actions = document.createElement("div");
+    actions.className = "chat-message-actions";
+    payload.actions.forEach((action) => {
+      const link = document.createElement("a");
+      link.href = action.url;
+      link.textContent = action.label;
+      if (action.targetBlank !== false) {
+        link.target = "_blank";
+        link.rel = "noopener noreferrer";
+      }
+      actions.append(link);
+    });
+    bubble.append(actions);
+  }
+
   message.append(bubble);
-  chatMessages.append(message);
+  container.append(message);
 
   if (options.persist !== false) {
-    assistantState.messages.push({ role, content });
-
-    if ((role === "user" || role === "assistant") && options.toHistory !== false) {
-      assistantState.history.push({ role, content });
+    assistantState.messages.push({ role, ...payload });
+    if ((role === "assistant" || role === "user") && options.toHistory !== false) {
+      assistantState.history.push({ role, content: payload.content });
     }
-
     persistAssistantState();
   }
 
   scrollMessagesToBottom();
   return message;
-};
+}
 
-const removeTypingIndicator = () => {
+function showTypingIndicator() {
+  removeTypingIndicator();
+  const container = document.querySelector("[data-chat-messages]");
+  if (!container) {
+    return;
+  }
+  typingIndicator = document.createElement("div");
+  typingIndicator.className = "chat-message chat-message-assistant chat-message-typing";
+  typingIndicator.innerHTML = `<div class="chat-message-bubble"><span></span><span></span><span></span></div>`;
+  container.append(typingIndicator);
+  scrollMessagesToBottom();
+}
+
+function removeTypingIndicator() {
   if (typingIndicator) {
     typingIndicator.remove();
     typingIndicator = null;
   }
-};
+}
 
-const showTypingIndicator = () => {
-  removeTypingIndicator();
-
-  if (!chatMessages) {
+function restoreAssistantMessages() {
+  const container = document.querySelector("[data-chat-messages]");
+  if (!container) {
     return;
   }
-
-  typingIndicator = document.createElement("div");
-  typingIndicator.className = "chat-message chat-message-assistant chat-message-typing";
-  typingIndicator.innerHTML = `
-    <div class="chat-message-bubble">
-      <span></span><span></span><span></span>
-    </div>
-  `;
-  chatMessages.append(typingIndicator);
-  scrollMessagesToBottom();
-};
-
-const getFallbackReply = (message) => {
-  const normalizedMessage = message.trim().toLowerCase();
-  const greetingPattern = /^(hi|hello|hey|good morning|good afternoon|good evening)\b/i;
-  const strongIntentPattern =
-    /\b(buy|price|cost|invest|investment|contact|call|visit|site visit|book|booking|quote|estimate|interested)\b/;
-
-  if (!assistantState.history.some((entry) => entry.role === "user") || greetingPattern.test(normalizedMessage)) {
-    return "Welcome to Imperial Houses. I'm Safa, your AI assistant. How can I help you today?";
-  }
-
-  if (strongIntentPattern.test(normalizedMessage)) {
-    return "That is great. Our team will contact you shortly.";
-  }
-
-  if (/\b(joint venture|joint-venture|landowner|land owner|property owner|develop my land)\b/.test(normalizedMessage)) {
-    return "Imperial Houses supports joint venture development for landowners with planning, approvals, construction, branding, and sales coordination.";
-  }
-
-  if (/\b(where|location|office|address|located|nanganallur|thiruvanmiyur|chennai)\b/.test(normalizedMessage)) {
-    return "Imperial Houses operates in Chennai, with offices in Thiruvanmiyur and Nanganallur, and supports projects across premium residential growth corridors.";
-  }
-
-  if (/\b(phone|email|contact details|whatsapp|reach)\b/.test(normalizedMessage)) {
-    return "You can reach Imperial Houses by phone at +91 96775 55912 or +91 96776 66812, by email at info.imperialhomes@gmail.com, or through WhatsApp from the floating button.";
-  }
-
-  if (/\b(price|cost|budget|quote|estimate)\b/.test(normalizedMessage)) {
-    return "Pricing depends on scope, location, specifications, and finish level. Share your requirement and our team can guide you on the best next step.";
-  }
-
-  if (/\b(ongoing|completed|project|projects|apartment)\b/.test(normalizedMessage)) {
-    return "Current highlights include Imperial Regal in Thiruvanmiyur, Imperial Royale in Nanganallur, and Imperial Park along the ECR belt.";
-  }
-
-  if (/\b(interior|interiors|luxury interior|design)\b/.test(normalizedMessage)) {
-    return "Imperial Houses handles luxury interior design, premium detailing, total home solutions, and integrated residential finishing with one coordinated team.";
-  }
-
-  if (/\b(method|process|timeline|how do you work|steps)\b/.test(normalizedMessage)) {
-    return "Our method follows five stages: Define, Design, Determine, Develop, and Deliver, so every project remains clear, trackable, and professionally managed.";
-  }
-
-  if (/\b(service|construction|build|home|renovation|interior|interiors|property development)\b/.test(normalizedMessage)) {
-    return "Imperial Houses supports construction, interiors, renovation, project management, total-home solutions, and premium residential development.";
-  }
-
-  return "Imperial Houses can help with premium construction services, project guidance, joint venture opportunities, pricing direction, and site visit coordination.";
-};
-
-const restoreAssistantMessages = () => {
-  if (!chatMessages) {
-    return;
-  }
-
-  chatMessages.innerHTML = "";
+  container.innerHTML = "";
 
   if (!assistantState.messages.length) {
-    renderMessage("assistant", assistantConfig.greeting);
+    renderMessage("assistant", { content: assistantConfig.greeting });
     setChatStatus("Ready to assist");
     return;
   }
 
   assistantState.messages.forEach((message) => {
-    renderMessage(message.role, message.content, {
-      persist: false,
-      toHistory: false,
+    renderMessage(message.role, { content: message.content, actions: message.actions }, { persist: false, toHistory: false });
+  });
+}
+
+function setChatOpen(isOpen) {
+  const panel = document.querySelector(".chat-panel");
+  const toggle = document.querySelector(".chat-toggle");
+  if (!panel || !toggle) {
+    return;
+  }
+
+  panel.classList.toggle("is-open", isOpen);
+  panel.setAttribute("aria-hidden", String(!isOpen));
+  toggle.setAttribute("aria-expanded", String(isOpen));
+
+  if (isOpen) {
+    document.querySelector("[data-chat-input]")?.focus();
+    scrollMessagesToBottom();
+  }
+}
+
+function bindHoverPanel(root, panel, openDelay = 80, closeDelay = 140) {
+  let openTimer = 0;
+  let closeTimer = 0;
+
+  const open = () => {
+    clearTimeout(closeTimer);
+    openTimer = window.setTimeout(() => {
+      panel.classList.add("is-open");
+      panel.setAttribute("aria-hidden", "false");
+      if (panel.classList.contains("chat-panel")) {
+        setChatOpen(true);
+      }
+    }, openDelay);
+  };
+
+  const close = () => {
+    clearTimeout(openTimer);
+    closeTimer = window.setTimeout(() => {
+      panel.classList.remove("is-open");
+      panel.setAttribute("aria-hidden", "true");
+      if (panel.classList.contains("chat-panel")) {
+        setChatOpen(false);
+      }
+    }, closeDelay);
+  };
+
+  [root, panel].forEach((node) => {
+    node.addEventListener("mouseenter", open);
+    node.addEventListener("mouseleave", close);
+    node.addEventListener("focusin", open);
+    node.addEventListener("focusout", (event) => {
+      const related = event.relatedTarget;
+      if (!(related instanceof Node) || (!root.contains(related) && !panel.contains(related))) {
+        close();
+      }
+    });
+  });
+}
+
+function attachAssistantEvents() {
+  const assistantRoot = document.querySelector("[data-ai-assistant]");
+  const panel = assistantRoot?.querySelector(".chat-panel");
+  const toggle = assistantRoot?.querySelector(".chat-toggle");
+  const closeButton = assistantRoot?.querySelector(".chat-close");
+  const form = assistantRoot?.querySelector("[data-chat-form]");
+  const input = assistantRoot?.querySelector("[data-chat-input]");
+  const chips = assistantRoot?.querySelectorAll("[data-quick-message]");
+
+  if (!assistantRoot || !panel || !toggle) {
+    return;
+  }
+
+  bindHoverPanel(toggle, panel);
+
+  document.querySelectorAll("[data-hover-popup]").forEach((popupRoot) => {
+    const popup = popupRoot.querySelector(".contact-popup");
+    const trigger = popupRoot.querySelector("a,button");
+    if (popup && trigger) {
+      bindHoverPanel(trigger, popup, 60, 120);
+    }
+  });
+
+  closeButton?.addEventListener("click", () => setChatOpen(false));
+
+  form?.addEventListener("submit", (event) => {
+    event.preventDefault();
+    if (!input) {
+      return;
+    }
+    const message = input.value;
+    input.value = "";
+    submitAssistantMessage(message);
+  });
+
+  chips?.forEach((chip) => {
+    chip.addEventListener("click", () => {
+      submitAssistantMessage(chip.getAttribute("data-quick-message") || "");
     });
   });
 
-  scrollMessagesToBottom();
-};
-
-const setChatOpen = (isOpen) => {
-  if (!chatPanel || !chatToggle) {
-    return;
-  }
-
-  chatPanel.classList.toggle("is-open", isOpen);
-  chatPanel.setAttribute("aria-hidden", String(!isOpen));
-  chatToggle.setAttribute("aria-expanded", String(isOpen));
-  document.body.classList.toggle("chat-open", isOpen && window.innerWidth <= 640);
-
-  if (isOpen) {
-    chatInput?.focus();
-    scrollMessagesToBottom();
-  }
-};
-
-const autoGreetAssistant = () => {
-  if (!chatPanel || !chatToggle) {
-    return;
-  }
-
-  try {
-    if (sessionStorage.getItem(assistantAutoGreetKey) === "1") {
-      return;
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+      setChatOpen(false);
     }
-    sessionStorage.setItem(assistantAutoGreetKey, "1");
-  } catch (error) {}
+  });
+}
 
-  window.setTimeout(() => {
-    setChatOpen(true);
-    window.setTimeout(() => setChatOpen(false), 3400);
-  }, assistantConfig.autoGreetingDelayMs);
-};
-
-const submitAssistantMessage = async (rawMessage) => {
+async function submitAssistantMessage(rawMessage) {
   const message = rawMessage.trim();
-  if (!message || assistantState.isRequestPending) {
+  if (!message || assistantState.isPending) {
     return;
   }
 
-  renderMessage("user", message);
+  renderMessage("user", { content: message });
+  assistantState.isPending = true;
   setChatStatus("Thinking...");
-  assistantState.isRequestPending = true;
   showTypingIndicator();
 
   try {
     const response = await fetch("/api/chat", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         message,
         history: assistantState.history.slice(-8),
@@ -525,70 +404,34 @@ const submitAssistantMessage = async (rawMessage) => {
 
     const data = await response.json();
     removeTypingIndicator();
-    renderMessage("assistant", data.reply || getFallbackReply(message));
-    setChatStatus(data.shouldNotify ? "Lead captured" : "Ready to assist");
-  } catch (error) {
+
+    const payload = {
+      content: String(data.reply || "Tell me what you need and I will guide you."),
+      actions: Array.isArray(data.actions) ? data.actions : [],
+    };
+
+    renderMessage("assistant", payload);
+    setChatStatus(data.shouldNotify ? "Owner notified" : "Ready to assist");
+
+    if (data.action?.type === "whatsapp" && data.action.url) {
+      window.setTimeout(() => {
+        window.open(data.action.url, "_blank", "noopener,noreferrer");
+      }, 160);
+    }
+  } catch {
     removeTypingIndicator();
-    renderMessage("assistant", getFallbackReply(message));
+    const fallbackUrl = buildWhatsappLink();
+    renderMessage("assistant", {
+      content: "I can help with services, pricing, projects, or owner contact. If you want, I can move this to WhatsApp.",
+      actions: [{ label: "Open WhatsApp", url: fallbackUrl }],
+    });
     setChatStatus("Offline fallback active");
   } finally {
-    assistantState.isRequestPending = false;
+    assistantState.isPending = false;
   }
-};
+}
 
-const attachAssistantEvents = () => {
-  if (!assistantRoot || !chatToggle || !chatPanel) {
-    return;
-  }
-
-  chatToggle.addEventListener("click", () => {
-    const isOpen = !chatPanel.classList.contains("is-open");
-    setChatOpen(isOpen);
-  });
-
-  chatClose?.addEventListener("click", () => {
-    setChatOpen(false);
-  });
-
-  chatForm?.addEventListener("submit", (event) => {
-    event.preventDefault();
-
-    if (!chatInput) {
-      return;
-    }
-
-    const nextMessage = chatInput.value;
-    chatInput.value = "";
-    submitAssistantMessage(nextMessage);
-  });
-
-  chatChips?.forEach((chip) => {
-    chip.addEventListener("click", () => {
-      const quickMessage = chip.getAttribute("data-quick-message") || "";
-      setChatOpen(true);
-      submitAssistantMessage(quickMessage);
-    });
-  });
-
-  document.addEventListener("click", (event) => {
-    const target = event.target;
-    if (!(target instanceof Node)) {
-      return;
-    }
-
-    if (!chatPanel.contains(target) && !chatToggle.contains(target)) {
-      setChatOpen(false);
-    }
-  });
-
-  document.addEventListener("keydown", (event) => {
-    if (event.key === "Escape") {
-      setChatOpen(false);
-    }
-  });
-};
-
-const attachJointVentureFormHandler = () => {
+function attachJointVentureFormHandler() {
   const form = document.querySelector(".joint-venture-form");
   if (!(form instanceof HTMLFormElement)) {
     return;
@@ -602,91 +445,107 @@ const attachJointVentureFormHandler = () => {
   }
 
   const submitButton = form.querySelector('button[type="submit"]');
-  const defaultButtonLabel = submitButton?.textContent || "Submit Enquiry";
+  const defaultLabel = submitButton?.textContent || "Submit Enquiry";
 
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
-
     if (!form.reportValidity()) {
       return;
     }
-
-    const formData = Object.fromEntries(new FormData(form).entries());
 
     if (submitButton instanceof HTMLButtonElement) {
       submitButton.disabled = true;
       submitButton.textContent = "Sending...";
     }
 
-    statusMessage.textContent = "";
-
     try {
       const response = await fetch("/api/lead", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           source: "joint-venture-form",
           page: currentPage,
           path: window.location.pathname,
           sessionId: assistantState.sessionId,
-          formData,
+          formData: Object.fromEntries(new FormData(form).entries()),
         }),
       });
 
       if (!response.ok) {
-        throw new Error(`Lead request failed with ${response.status}`);
+        throw new Error("Lead request failed");
       }
 
       const data = await response.json();
       statusMessage.textContent = data.message || "Thanks. Our team will contact you shortly.";
       form.reset();
-    } catch (error) {
-      statusMessage.textContent =
-        "We could not submit the enquiry right now. Please call +91 96775 55912 or email info.imperialhomes@gmail.com.";
+    } catch {
+      statusMessage.textContent = `We could not submit this right now. Please call ${assistantConfig.phoneLabel}.`;
     } finally {
       if (submitButton instanceof HTMLButtonElement) {
         submitButton.disabled = false;
-        submitButton.textContent = defaultButtonLabel;
+        submitButton.textContent = defaultLabel;
       }
     }
   });
-};
+}
 
-const setupLetterAnimations = () => {
+function setupLetterAnimations() {
   const words = document.querySelectorAll("[data-letter-fx]");
-  words.forEach((word, index) => {
+  words.forEach((word, wordIndex) => {
     const text = (word.textContent || "").trim();
     if (!text || word.dataset.letterReady === "1") {
       return;
     }
-
     word.dataset.letterReady = "1";
     word.classList.add("split-word");
     word.textContent = "";
-
-    [...text].forEach((character, charIndex) => {
+    [...text].forEach((character, characterIndex) => {
       const span = document.createElement("span");
       span.className = "split-char";
       span.textContent = character;
-      span.style.animationDelay = `${index * 180 + charIndex * 45}ms`;
+      span.style.animationDelay = `${wordIndex * 180 + characterIndex * 45}ms`;
       word.append(span);
     });
   });
 
-  const animateWords = () => {
-    words.forEach((word) => word.classList.add("is-visible"));
-  };
-
+  const revealWords = () => words.forEach((word) => word.classList.add("is-visible"));
   if (document.readyState === "complete") {
-    window.setTimeout(animateWords, 220);
+    setTimeout(revealWords, 220);
   } else {
-    window.addEventListener("load", () => window.setTimeout(animateWords, 220), { once: true });
+    window.addEventListener("load", () => setTimeout(revealWords, 220), { once: true });
   }
-};
+}
 
-const setupCounters = () => {
+function setupRevealAnimations() {
+  const items = document.querySelectorAll(".reveal, .text-fade");
+  const observer = new IntersectionObserver(
+    (entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add("is-visible");
+          observer.unobserve(entry.target);
+        }
+      });
+    },
+    { threshold: 0.16, rootMargin: "0px 0px -10% 0px" }
+  );
+
+  items.forEach((item) => observer.observe(item));
+}
+
+function setupTextAnimations() {
+  document
+    .querySelectorAll("header a, header button, main h1, main h2, main h3, main p, main li, main span, footer h3, footer p, footer a")
+    .forEach((node, index) => {
+      if (node.closest(".chat-panel, .float-label, .contact-popup")) {
+        return;
+      }
+      node.classList.add("text-fade");
+      node.style.setProperty("--text-fade-delay", `${Math.min(index * 18, 320)}ms`);
+    });
+}
+
+function setupCounters() {
   const counters = document.querySelectorAll("[data-counter-target]");
   if (!counters.length) {
     return;
@@ -699,19 +558,25 @@ const setupCounters = () => {
     }
 
     element.dataset.counted = "1";
-    const duration = 1700;
-    const startTime = performance.now();
+    const duration = Math.min(1800, 900 + target * 4);
+    let startTime = 0;
 
-    const update = (currentTime) => {
-      const progress = Math.min(1, (currentTime - startTime) / duration);
+    const frame = (time) => {
+      if (!startTime) {
+        startTime = time;
+      }
+      const progress = Math.min(1, (time - startTime) / duration);
       const eased = 1 - Math.pow(1 - progress, 3);
-      element.textContent = String(Math.round(target * eased));
+      const nextValue = Math.round(target * eased);
+      if (element.textContent !== String(nextValue)) {
+        element.textContent = String(nextValue);
+      }
       if (progress < 1) {
-        window.requestAnimationFrame(update);
+        requestAnimationFrame(frame);
       }
     };
 
-    window.requestAnimationFrame(update);
+    requestAnimationFrame(frame);
   };
 
   const observer = new IntersectionObserver(
@@ -723,322 +588,201 @@ const setupCounters = () => {
         }
       });
     },
-    { threshold: 0.55 }
+    { threshold: 0.45 }
   );
 
   counters.forEach((counter) => observer.observe(counter));
-};
-
-const setupTextAnimations = () => {
-  const textNodes = document.querySelectorAll(
-    "header a, header button, main h1, main h2, main h3, main p, main li, main span, footer h3, footer p, footer a"
-  );
-
-  textNodes.forEach((node, index) => {
-    if (node.closest(".chat-panel, .float-label")) {
-      return;
-    }
-
-    node.classList.add("text-fade");
-    node.style.setProperty("--text-fade-delay", `${Math.min(index * 20, 320)}ms`);
-  });
-
-  const visibleTextObserver = new IntersectionObserver(
-    (entries) => {
-      entries.forEach((entry) => {
-        if (entry.isIntersecting) {
-          entry.target.classList.add("is-visible");
-          visibleTextObserver.unobserve(entry.target);
-        }
-      });
-    },
-    {
-      threshold: 0.2,
-      rootMargin: "0px 0px -8% 0px",
-    }
-  );
-
-  textNodes.forEach((node) => {
-    if (!node.classList.contains("text-fade")) {
-      return;
-    }
-    visibleTextObserver.observe(node);
-  });
-};
-
-const attachHoverMedia = (targetImage, { hoverImageSrc, videoKey }) => {
-  if (!(targetImage instanceof HTMLImageElement) || targetImage.dataset.hoverEnhanced === "1") {
-    return;
-  }
-
-  const videoSrc = hoverVideoLibrary[videoKey];
-  if (!hoverImageSrc && !videoSrc) {
-    return;
-  }
-
-  targetImage.dataset.hoverEnhanced = "1";
-
-  const wrapper = document.createElement("div");
-  wrapper.className = "media-swap";
-  targetImage.parentNode?.insertBefore(wrapper, targetImage);
-  wrapper.append(targetImage);
-  targetImage.classList.add("media-base");
-
-  if (hoverImageSrc) {
-    const hoverImage = document.createElement("img");
-    hoverImage.className = "media-hover-image";
-    hoverImage.src = hoverImageSrc;
-    hoverImage.alt = "";
-    hoverImage.loading = "lazy";
-    hoverImage.setAttribute("aria-hidden", "true");
-    wrapper.append(hoverImage);
-  }
-
-  let hoverVideo = null;
-  if (videoSrc) {
-    hoverVideo = document.createElement("video");
-    hoverVideo.className = "media-hover-video";
-    hoverVideo.muted = true;
-    hoverVideo.loop = true;
-    hoverVideo.playsInline = true;
-    hoverVideo.preload = "none";
-    hoverVideo.poster = targetImage.currentSrc || targetImage.src;
-    hoverVideo.setAttribute("aria-hidden", "true");
-    hoverVideo.src = videoSrc;
-    hoverVideo.addEventListener("canplay", () => {
-      wrapper.classList.add("is-video-ready");
-    });
-    wrapper.append(hoverVideo);
-  }
-
-  const activate = () => {
-    wrapper.classList.add("is-active");
-    hoverVideo?.play().catch(() => {});
-  };
-
-  const deactivate = () => {
-    wrapper.classList.remove("is-active");
-    if (hoverVideo) {
-      hoverVideo.pause();
-    }
-  };
-
-  wrapper.addEventListener("mouseenter", activate);
-  wrapper.addEventListener("mouseleave", deactivate);
-  wrapper.addEventListener("focusin", activate);
-  wrapper.addEventListener("focusout", deactivate);
-};
-
-const setupHoverMedia = () => {
-  attachHoverMedia(document.querySelector(".hero-image"), {
-    hoverImageSrc: "assets/project-royale-real.jpg",
-    videoKey: "siteProgress",
-  });
-
-  [
-    [".page-hero-image-about", "assets/projects-hero-real.jpg", "skylineBuild"],
-    [".page-hero-image-contact", "assets/service-management-real.jpg", "interiorFlow"],
-    [".page-hero-image-projects", "assets/project-regal-real.jpg", "towerTimelapse"],
-    [".page-hero-image-services", "assets/service-interiors-real.jpg", "interiorFlow"],
-    [".page-hero-image-joint-venture", "assets/projects-hero-real.jpg", "steelFrame"],
-    [".page-hero-image-method", "assets/service-construction-real.jpg", "siteProgress"],
-  ].forEach(([selector, imageSrc, videoKey]) => {
-    attachHoverMedia(document.querySelector(selector), {
-      hoverImageSrc: imageSrc,
-      videoKey,
-    });
-  });
-
-  document.querySelectorAll(".showcase-image").forEach((image, index) => {
-    const hoverConfigs = [
-      ["assets/project-regal-real.jpg", "siteProgress"],
-      ["assets/service-total-home-real.jpg", "interiorFlow"],
-      ["assets/project-royale-real.jpg", "towerTimelapse"],
-    ];
-    const [hoverImageSrc, videoKey] = hoverConfigs[index] || hoverConfigs[0];
-    attachHoverMedia(image, { hoverImageSrc, videoKey });
-  });
-
-  document.querySelectorAll(".service-image").forEach((image, index) => {
-    const hoverConfigs = [
-      ["assets/projects-hero-real.jpg", "skylineBuild"],
-      ["assets/home-hero-real.jpg", "steelFrame"],
-      ["assets/contact-hero-real.jpg", "siteProgress"],
-      ["assets/about-hero-real.jpg", "interiorFlow"],
-      ["assets/service-design-real.jpg", "towerTimelapse"],
-      ["assets/method-hero-real.jpg", "siteProgress"],
-    ];
-    const [hoverImageSrc, videoKey] = hoverConfigs[index] || hoverConfigs[0];
-    attachHoverMedia(image, { hoverImageSrc, videoKey });
-  });
-
-  document.querySelectorAll(".project-image").forEach((image, index) => {
-    const hoverConfigs = [
-      ["assets/projects-hero-real.jpg", "towerTimelapse"],
-      ["assets/home-hero-real.jpg", "steelFrame"],
-      ["assets/service-design-real.jpg", "siteProgress"],
-    ];
-    const [hoverImageSrc, videoKey] = hoverConfigs[index] || hoverConfigs[0];
-    attachHoverMedia(image, { hoverImageSrc, videoKey });
-  });
-};
-
-restoreAssistantState();
-restoreAssistantMessages();
-attachAssistantEvents();
-attachJointVentureFormHandler();
-setupLetterAnimations();
-setupCounters();
-setupTextAnimations();
-setupHoverMedia();
-
-if (isTransitioningPage) {
-  loader?.classList.remove("is-hidden");
-  loader?.classList.add("is-transitioning");
-  loader?.style.setProperty("--loader-duration", `${getTransitionRemainingMs()}ms`);
 }
 
-window.addEventListener("load", () => {
-  finishPageEntry();
-  autoGreetAssistant();
-});
-window.addEventListener("pageshow", finishPageEntry);
+function setupParallax() {
+  const nodes = document.querySelectorAll(".hero-video, .hero-orb, .hero-card");
+  if (!nodes.length) {
+    return;
+  }
 
-["pointerdown", "click", "touchend"].forEach((eventName) => {
-  document.addEventListener(
-    eventName,
-    (event) => {
-      if (!isInputLocked()) {
+  const update = () => {
+    const scrollY = window.scrollY || 0;
+    nodes.forEach((node) => {
+      if (node.classList.contains("hero-video")) {
+        node.style.transform = `translate3d(0, ${scrollY * 0.08}px, 0) scale(1.06)`;
         return;
       }
 
-      const target = event.target;
-      if (target instanceof Node && loader?.contains(target)) {
-        event.preventDefault();
-        event.stopPropagation();
+      if (node.classList.contains("hero-card")) {
+        node.style.transform = `translate3d(0, ${scrollY * -0.03}px, 0)`;
+        return;
       }
-    },
-    true
-  );
-});
 
-document.querySelectorAll("a[href]").forEach((link) => {
-  const linkUrl = new URL(link.href, window.location.href);
+      node.style.transform = `translate3d(0, ${scrollY * 0.05}px, 0)`;
+    });
+  };
 
-  if (shouldHandleAsInternalPage(linkUrl, link)) {
-    link.addEventListener("mouseenter", () => prefetchPage(linkUrl), { passive: true });
-    link.addEventListener(
-      "touchstart",
-      () => {
-        prefetchPage(linkUrl);
-      },
-      {
-        passive: true,
-        once: true,
-      }
-    );
-  }
-
-  link.addEventListener("click", (event) => {
-    if (isNavigating) {
-      event.preventDefault();
+  let ticking = false;
+  const onScroll = () => {
+    if (ticking) {
       return;
     }
+    ticking = true;
+    requestAnimationFrame(() => {
+      update();
+      ticking = false;
+    });
+  };
 
-    if (event.defaultPrevented || event.button !== 0) {
-      return;
-    }
-
-    if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
-      return;
-    }
-
-    const href = link.getAttribute("href");
-    if (!href || href.startsWith("#")) {
-      return;
-    }
-
-    const url = new URL(link.href, window.location.href);
-
-    if (!shouldHandleAsInternalPage(url, link)) {
-      return;
-    }
-
-    if (url.pathname === window.location.pathname && url.search === window.location.search && url.hash) {
-      return;
-    }
-
-    if (url.pathname === window.location.pathname && url.search === window.location.search && !url.hash) {
-      return;
-    }
-
-    event.preventDefault();
-    showPageTransition(url.href);
-  });
-});
-
-if ("requestIdleCallback" in window) {
-  window.requestIdleCallback(prefetchAllInternalPages, { timeout: 1200 });
-} else {
-  window.setTimeout(prefetchAllInternalPages, 800);
+  update();
+  window.addEventListener("scroll", onScroll, { passive: true });
+  window.addEventListener("resize", onScroll);
 }
 
-if (navToggle && siteNav) {
-  navToggle.addEventListener("click", () => {
-    const isOpen = siteNav.classList.toggle("is-open");
-    navToggle.setAttribute("aria-expanded", String(isOpen));
-    document.body.classList.toggle("menu-open", isOpen);
-  });
+function prefetchPage(url) {
+  if (prefetchedPages.has(url.href)) {
+    return;
+  }
+  prefetchedPages.add(url.href);
+  const link = document.createElement("link");
+  link.rel = "prefetch";
+  link.href = url.href;
+  link.as = "document";
+  document.head.append(link);
+}
+
+function shouldHandleAsInternalPage(url, link) {
+  return url.origin === window.location.origin && !link.hasAttribute("download") && link.target !== "_blank";
+}
+
+function showPageTransition(href) {
+  if (isNavigating) {
+    return;
+  }
+  isNavigating = true;
+  try {
+    sessionStorage.setItem(transitionStorageKey, "1");
+    sessionStorage.setItem(transitionStartedAtKey, String(Date.now()));
+  } catch {}
+
+  document.documentElement.classList.add("is-transitioning-page");
+  loader?.classList.remove("is-hidden");
+  loader?.classList.add("is-transitioning");
+
+  setTimeout(() => {
+    window.location.href = href;
+  }, transitionNavigateDelayMs);
+}
+
+function finishPageEntry() {
+  if (!isTransitioningPage) {
+    loader?.classList.add("is-hidden");
+    return;
+  }
+
+  const startedAt = Number(sessionStorage.getItem(transitionStartedAtKey));
+  const remainingMs =
+    Number.isFinite(startedAt) && startedAt > 0 ? Math.max(0, transitionDurationMs - (Date.now() - startedAt)) : transitionDurationMs;
+
+  setTimeout(() => {
+    loader?.classList.add("is-hidden");
+    loader?.classList.remove("is-transitioning");
+    document.documentElement.classList.remove("is-transitioning-page");
+    try {
+      sessionStorage.removeItem(transitionStorageKey);
+      sessionStorage.removeItem(transitionStartedAtKey);
+    } catch {}
+  }, remainingMs);
+}
+
+function setupNavigation() {
+  if (currentPage) {
+    document.querySelector(`[data-nav="${currentPage}"]`)?.classList.add("is-active");
+  }
+
+  if (navToggle && siteNav) {
+    navToggle.addEventListener("click", () => {
+      const isOpen = siteNav.classList.toggle("is-open");
+      navToggle.setAttribute("aria-expanded", String(isOpen));
+      document.body.classList.toggle("menu-open", isOpen);
+    });
+  }
 
   navLinks.forEach((link) => {
+    const url = new URL(link.href, window.location.href);
+
+    link.addEventListener("mouseenter", () => {
+      if (shouldHandleAsInternalPage(url, link)) {
+        prefetchPage(url);
+      }
+    });
+
+    link.addEventListener("click", (event) => {
+      if (isNavigating || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) {
+        return;
+      }
+
+      const href = link.getAttribute("href");
+      if (!href || href.startsWith("#")) {
+        return;
+      }
+
+      if (!shouldHandleAsInternalPage(url, link)) {
+        return;
+      }
+
+      if (url.pathname === window.location.pathname && url.search === window.location.search) {
+        return;
+      }
+
+      event.preventDefault();
+      showPageTransition(url.href);
+    });
+
     link.addEventListener("click", () => {
-      siteNav.classList.remove("is-open");
-      navToggle.setAttribute("aria-expanded", "false");
+      siteNav?.classList.remove("is-open");
+      navToggle?.setAttribute("aria-expanded", "false");
       document.body.classList.remove("menu-open");
     });
   });
 }
 
-if (currentPage) {
-  const activeLink = document.querySelector(`[data-nav="${currentPage}"]`);
-  activeLink?.classList.add("is-active");
+function setupTopbarScroll() {
+  window.addEventListener(
+    "scroll",
+    () => {
+      if (!topbar || document.body.classList.contains("menu-open")) {
+        return;
+      }
+      const currentScrollY = window.scrollY;
+      if (currentScrollY <= 16) {
+        topbar.classList.remove("topbar-hidden");
+        lastScrollY = currentScrollY;
+        return;
+      }
+      if (currentScrollY > lastScrollY && currentScrollY > 120) {
+        topbar.classList.add("topbar-hidden");
+      } else if (currentScrollY < lastScrollY) {
+        topbar.classList.remove("topbar-hidden");
+      }
+      lastScrollY = currentScrollY;
+    },
+    { passive: true }
+  );
 }
 
-window.addEventListener("scroll", () => {
-  if (!topbar || document.body.classList.contains("menu-open")) {
-    return;
-  }
+mountAssistant();
+restoreAssistantState();
+restoreAssistantMessages();
+attachAssistantEvents();
+attachJointVentureFormHandler();
+setupNavigation();
+setupTopbarScroll();
+setupLetterAnimations();
+setupTextAnimations();
+setupRevealAnimations();
+setupCounters();
+setupParallax();
 
-  const currentScrollY = window.scrollY;
+if (isTransitioningPage) {
+  loader?.classList.remove("is-hidden");
+  loader?.classList.add("is-transitioning");
+}
 
-  if (currentScrollY <= 16) {
-    topbar.classList.remove("topbar-hidden");
-    lastScrollY = currentScrollY;
-    return;
-  }
-
-  if (currentScrollY > lastScrollY && currentScrollY > 120) {
-    topbar.classList.add("topbar-hidden");
-  } else if (currentScrollY < lastScrollY) {
-    topbar.classList.remove("topbar-hidden");
-  }
-
-  lastScrollY = currentScrollY;
-});
-
-const revealObserver = new IntersectionObserver(
-  (entries) => {
-    entries.forEach((entry) => {
-      if (entry.isIntersecting) {
-        entry.target.classList.add("is-visible");
-        revealObserver.unobserve(entry.target);
-      }
-    });
-  },
-  {
-    threshold: 0.16,
-    rootMargin: "0px 0px -10% 0px",
-  }
-);
-
-revealItems.forEach((item) => revealObserver.observe(item));
+window.addEventListener("load", finishPageEntry, { once: true });
+window.addEventListener("pageshow", finishPageEntry);

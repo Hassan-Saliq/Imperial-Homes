@@ -11,7 +11,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link
-    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Montserrat:wght@600;700;800&display=swap"
+    href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap"
     rel="stylesheet"
   >
   <script>
@@ -21,7 +21,7 @@
       }
     } catch (error) {}
   </script>
-  <link rel="stylesheet" href="styles.css?v=20260415d">
+  <link rel="stylesheet" href="styles.css?v=20260415e">
 </head>
 <body data-page="home">
   <div class="page-loader" aria-hidden="true">
@@ -56,16 +56,31 @@
 
     <main>
       <section class="hero hero-home">
+        <video
+          class="hero-video"
+          src="assets/theme video.mp4"
+          autoplay
+          muted
+          loop
+          playsinline
+          preload="metadata"
+          aria-hidden="true"
+        ></video>
+        <div class="hero-video-overlay" aria-hidden="true"></div>
+        <div class="hero-atmosphere" aria-hidden="true">
+          <span class="hero-orb hero-orb-left"></span>
+          <span class="hero-orb hero-orb-right"></span>
+        </div>
         <div class="wrap hero-grid">
           <div class="hero-copy reveal">
             <p class="eyebrow">Imperial Houses | D.R Construction &amp; Best Homes</p>
             <h1 class="hero-kicker">
-              <span class="text-accent" data-letter-fx>Premium</span> spaces with
-              <span data-letter-fx>Integrated</span> execution.
+              <span class="text-accent" data-letter-fx>Luxury</span> construction with
+              <span data-letter-fx>cinematic</span> presence.
             </h1>
             <p class="hero-text">
-              Imperial Houses delivers contemporary buildings, private villas, apartment developments,
-              interiors, and renovation projects with a clean architectural language and a disciplined site culture.
+              Imperial Houses delivers private villas, apartment developments, interiors, and renovation
+              projects with sharper design direction, disciplined execution, and a premium client experience.
             </p>
             <div class="hero-actions">
               <a class="button button-primary" href="projects.html">Explore Projects</a>
@@ -75,6 +90,20 @@
               <span>Design-build leadership</span>
               <span>Luxury residential focus</span>
               <span>Fast, clear client communication</span>
+            </div>
+            <div class="hero-stats-panel reveal reveal-delay">
+              <article>
+                <strong>30+</strong>
+                <span>Years shaping premium builds</span>
+              </article>
+              <article>
+                <strong>120+</strong>
+                <span>Luxury interiors and residences</span>
+              </article>
+              <article>
+                <strong>24/7</strong>
+                <span>Responsive client support</span>
+              </article>
             </div>
           </div>
 
@@ -298,6 +327,6 @@
     </footer>
   </div>
 
-  <script src="script.js?v=20260415d"></script>
+  <script src="script.js?v=20260415e"></script>
 </body>
 </html>
