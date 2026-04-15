@@ -1,22 +1,31 @@
 const assistantConfig = {
   companyName: "Imperial Homes",
-  greeting: "Hello! Welcome to Imperial Homes. How can I assist you today?",
+  assistantName: "BuildIQ Concierge",
+  greeting: "Welcome to Imperial Homes. I am BuildIQ Concierge. Ask me about projects, construction services, pricing guidance, or booking a site visit.",
+  autoGreetingDelayMs: 1200,
   phone: "+919677555912",
   phoneLabel: "+91 96775 55912",
   whatsappNumber: "919677555912",
   whatsappMessage:
-    "Hello Imperial Homes, I would like to know more about your construction services and projects.",
+    "Hello Imperial Homes, I would like to know more about your premium construction services and projects.",
   email: "info.imperialhomes@gmail.com",
   promptChips: [
-    "Construction services",
+    "Luxury home construction",
+    "Renovation and interiors",
     "Joint venture projects",
-    "Project pricing",
     "Book a site visit",
   ],
 };
 
 const assistantSessionKey = "imperial-ai-session-id";
 const assistantStateKey = "imperial-ai-chat-state";
+const assistantAutoGreetKey = "imperial-ai-greeted";
+
+const whatsappIcon = `
+  <svg viewBox="0 0 32 32" focusable="false" aria-hidden="true">
+    <path d="M27.3 4.6A15.17 15.17 0 0 0 16.5 0C8 0 1.1 6.9 1.1 15.4c0 2.7.7 5.3 2 7.7L0 32l9.2-3A15.34 15.34 0 0 0 16.5 31c8.5 0 15.4-6.9 15.4-15.4 0-4.1-1.6-8-4.6-11ZM16.5 28.4c-2.3 0-4.6-.6-6.6-1.8l-.5-.3-5.5 1.8 1.8-5.3-.3-.5a12.56 12.56 0 0 1-1.9-6.8c0-7.1 5.8-12.9 12.9-12.9 3.5 0 6.7 1.3 9.1 3.8a12.77 12.77 0 0 1 3.8 9.1c0 7.1-5.8 12.9-12.8 12.9Zm7.1-9.7c-.4-.2-2.5-1.2-2.9-1.4-.4-.1-.7-.2-1 .2-.3.4-1.1 1.4-1.4 1.7-.2.3-.5.3-.9.1-.4-.2-1.8-.7-3.3-2.1-1.2-1.1-2-2.4-2.2-2.8-.2-.4 0-.6.2-.8.2-.2.4-.5.6-.7.2-.2.3-.4.5-.7.2-.3.1-.6 0-.8-.1-.2-1-2.4-1.4-3.3-.3-.8-.7-.7-1-.7h-.9c-.3 0-.8.1-1.2.6-.4.4-1.5 1.4-1.5 3.5s1.5 4 1.7 4.3c.2.3 3 4.6 7.4 6.4 4.4 1.9 4.4 1.2 5.2 1.1.8-.1 2.5-1 2.8-2 .4-1 .4-1.9.3-2.1-.1-.2-.4-.3-.8-.5Z"></path>
+  </svg>
+`;
 
 const mountAssistant = () => {
   document.querySelectorAll(".chat-widget, .whatsapp-float, .call-float, .floating-contact-stack").forEach((node) => {
@@ -32,7 +41,7 @@ const mountAssistant = () => {
 
   stack.innerHTML = `
     <div class="chat-widget" data-ai-assistant>
-      <div id="chat-panel" class="chat-panel" aria-hidden="true" role="dialog" aria-label="AI Assistant – Imperial Homes">
+      <div id="chat-panel" class="chat-panel" aria-hidden="true" role="dialog" aria-label="${assistantConfig.assistantName}">
         <div class="chat-panel-header">
           <div class="chat-panel-brand">
             <span class="chat-panel-badge" aria-hidden="true">
@@ -41,11 +50,11 @@ const mountAssistant = () => {
               </svg>
             </span>
             <div>
-              <strong>AI Assistant – Imperial Homes</strong>
-              <span data-chat-status>Sales and support assistant</span>
+              <strong>${assistantConfig.assistantName}</strong>
+              <span data-chat-status>Premium construction assistant</span>
             </div>
           </div>
-          <button class="chat-close" type="button" aria-label="Close assistant">×</button>
+          <button class="chat-close" type="button" aria-label="Close assistant">x</button>
         </div>
 
         <div class="chat-quick-actions" aria-label="Suggested questions">
@@ -61,13 +70,13 @@ const mountAssistant = () => {
 
         <form class="chat-form" data-chat-form>
           <label class="chat-input-wrap">
-            <span class="sr-only">Ask Imperial Homes AI assistant</span>
+            <span class="sr-only">Ask ${assistantConfig.assistantName}</span>
             <input
               class="chat-input"
               data-chat-input
               type="text"
               name="message"
-              placeholder="Ask about services, pricing, projects, or joint venture..."
+              placeholder="Ask about services, projects, pricing, or site visits..."
               autocomplete="off"
               required
             >
@@ -76,7 +85,7 @@ const mountAssistant = () => {
         </form>
       </div>
 
-      <button class="chat-toggle" type="button" aria-expanded="false" aria-controls="chat-panel" aria-label="Open AI Assistant">
+      <button class="chat-toggle" type="button" aria-expanded="false" aria-controls="chat-panel" aria-label="Open ${assistantConfig.assistantName}">
         <span class="chat-toggle-glow" aria-hidden="true"></span>
         <span class="chat-toggle-icon" aria-hidden="true">
           <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
@@ -94,11 +103,11 @@ const mountAssistant = () => {
       rel="noopener noreferrer"
       aria-label="Chat with Imperial Homes on WhatsApp"
     >
-      <span aria-hidden="true">WA</span>
+      ${whatsappIcon}
     </a>
 
-    <a class="call-float" href="tel:${assistantConfig.phone}" aria-label="Call Imperial Homes">
-      <span aria-hidden="true">Call</span>
+    <a class="call-float" href="tel:${assistantConfig.phone}" aria-label="Call Imperial Homes at ${assistantConfig.phoneLabel}">
+      <span>Call</span>
     </a>
   `;
 
@@ -154,9 +163,7 @@ const getTransitionRemainingMs = () => {
     if (Number.isFinite(startedAt) && startedAt > 0) {
       return Math.max(0, transitionDurationMs - (Date.now() - startedAt));
     }
-  } catch (error) {
-    // Ignore storage failures and use the default duration.
-  }
+  } catch (error) {}
 
   return transitionDurationMs;
 };
@@ -183,9 +190,7 @@ const finishPageEntry = () => {
     try {
       sessionStorage.removeItem(transitionStorageKey);
       sessionStorage.removeItem(transitionStartedAtKey);
-    } catch (error) {
-      // Ignore storage failures and continue with the transition.
-    }
+    } catch (error) {}
   }, remainingMs);
 };
 
@@ -204,9 +209,7 @@ const showPageTransition = (href) => {
   try {
     sessionStorage.setItem(transitionStorageKey, "1");
     sessionStorage.setItem(transitionStartedAtKey, String(Date.now()));
-  } catch (error) {
-    // Ignore storage failures and continue with navigation.
-  }
+  } catch (error) {}
 
   document.documentElement.classList.add("is-transitioning-page");
   loader.classList.remove("is-hidden");
@@ -280,9 +283,7 @@ const persistAssistantState = () => {
         history: assistantState.history.slice(-12),
       })
     );
-  } catch (error) {
-    // Ignore persistence failures.
-  }
+  } catch (error) {}
 };
 
 const restoreAssistantState = () => {
@@ -381,15 +382,15 @@ const getFallbackReply = (message) => {
     /\b(buy|price|cost|invest|investment|contact|call|visit|site visit|book|booking|quote|estimate|interested)\b/;
 
   if (strongIntentPattern.test(normalizedMessage)) {
-    return "That’s great! Our team will contact you shortly.";
+    return "That is great. Our team will contact you shortly.";
   }
 
   if (/\b(joint venture|joint-venture|landowner|land owner|property owner|develop my land)\b/.test(normalizedMessage)) {
-    return "Imperial Homes partners with landowners on joint venture projects with planning, approvals, construction, and sales coordination.";
+    return "Imperial Homes supports joint venture development for landowners with planning, approvals, construction, branding, and sales coordination.";
   }
 
   if (/\b(price|cost|budget|quote|estimate)\b/.test(normalizedMessage)) {
-    return "Pricing depends on scope, location, specifications, and project type. Share your requirement and we can guide you on the next step.";
+    return "Pricing depends on scope, location, specifications, and finish level. Share your requirement and our team can guide you on the best next step.";
   }
 
   if (/\b(ongoing|completed|project|projects|apartment)\b/.test(normalizedMessage)) {
@@ -397,10 +398,10 @@ const getFallbackReply = (message) => {
   }
 
   if (/\b(service|construction|build|home|renovation|interior|interiors|property development)\b/.test(normalizedMessage)) {
-    return "Imperial Homes supports building construction, renovation, interiors, joint venture projects, and property development with a premium, professional approach.";
+    return "Imperial Homes supports construction, interiors, renovation, project management, total-home solutions, and premium residential development.";
   }
 
-  return "Imperial Homes can help with construction services, joint venture projects, pricing guidance, and current developments. Tell me what you need help with.";
+  return "Imperial Homes can help with premium construction services, project guidance, joint venture opportunities, pricing direction, and site visit coordination.";
 };
 
 const restoreAssistantMessages = () => {
@@ -440,6 +441,24 @@ const setChatOpen = (isOpen) => {
     chatInput?.focus();
     scrollMessagesToBottom();
   }
+};
+
+const autoGreetAssistant = () => {
+  if (!chatPanel || !chatToggle) {
+    return;
+  }
+
+  try {
+    if (sessionStorage.getItem(assistantAutoGreetKey) === "1") {
+      return;
+    }
+    sessionStorage.setItem(assistantAutoGreetKey, "1");
+  } catch (error) {}
+
+  window.setTimeout(() => {
+    setChatOpen(true);
+    window.setTimeout(() => setChatOpen(false), 3400);
+  }, assistantConfig.autoGreetingDelayMs);
 };
 
 const submitAssistantMessage = async (rawMessage) => {
@@ -589,8 +608,7 @@ const attachJointVentureFormHandler = () => {
       }
 
       const data = await response.json();
-      statusMessage.textContent =
-        data.message || "Thanks. Our team will contact you shortly.";
+      statusMessage.textContent = data.message || "Thanks. Our team will contact you shortly.";
       form.reset();
     } catch (error) {
       statusMessage.textContent =
@@ -604,10 +622,87 @@ const attachJointVentureFormHandler = () => {
   });
 };
 
+const setupLetterAnimations = () => {
+  const words = document.querySelectorAll("[data-letter-fx]");
+  words.forEach((word, index) => {
+    const text = (word.textContent || "").trim();
+    if (!text || word.dataset.letterReady === "1") {
+      return;
+    }
+
+    word.dataset.letterReady = "1";
+    word.classList.add("split-word");
+    word.textContent = "";
+
+    [...text].forEach((character, charIndex) => {
+      const span = document.createElement("span");
+      span.className = "split-char";
+      span.textContent = character;
+      span.style.animationDelay = `${index * 180 + charIndex * 45}ms`;
+      word.append(span);
+    });
+  });
+
+  const animateWords = () => {
+    words.forEach((word) => word.classList.add("is-visible"));
+  };
+
+  if (document.readyState === "complete") {
+    window.setTimeout(animateWords, 220);
+  } else {
+    window.addEventListener("load", () => window.setTimeout(animateWords, 220), { once: true });
+  }
+};
+
+const setupCounters = () => {
+  const counters = document.querySelectorAll("[data-counter-target]");
+  if (!counters.length) {
+    return;
+  }
+
+  const animateCounter = (element) => {
+    const target = Number(element.getAttribute("data-counter-target"));
+    if (!Number.isFinite(target) || element.dataset.counted === "1") {
+      return;
+    }
+
+    element.dataset.counted = "1";
+    const duration = 1700;
+    const startTime = performance.now();
+
+    const update = (currentTime) => {
+      const progress = Math.min(1, (currentTime - startTime) / duration);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      element.textContent = String(Math.round(target * eased));
+      if (progress < 1) {
+        window.requestAnimationFrame(update);
+      }
+    };
+
+    window.requestAnimationFrame(update);
+  };
+
+  const observer = new IntersectionObserver(
+    (entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          animateCounter(entry.target);
+          observer.unobserve(entry.target);
+        }
+      });
+    },
+    { threshold: 0.55 }
+  );
+
+  counters.forEach((counter) => observer.observe(counter));
+};
+
 restoreAssistantState();
 restoreAssistantMessages();
 attachAssistantEvents();
 attachJointVentureFormHandler();
+setupLetterAnimations();
+setupCounters();
 
 if (isTransitioningPage) {
   loader?.classList.remove("is-hidden");
@@ -615,7 +710,10 @@ if (isTransitioningPage) {
   loader?.style.setProperty("--loader-duration", `${getTransitionRemainingMs()}ms`);
 }
 
-window.addEventListener("load", finishPageEntry);
+window.addEventListener("load", () => {
+  finishPageEntry();
+  autoGreetAssistant();
+});
 window.addEventListener("pageshow", finishPageEntry);
 
 ["pointerdown", "click", "touchend"].forEach((eventName) => {
@@ -641,10 +739,16 @@ document.querySelectorAll("a[href]").forEach((link) => {
 
   if (shouldHandleAsInternalPage(linkUrl, link)) {
     link.addEventListener("mouseenter", () => prefetchPage(linkUrl), { passive: true });
-    link.addEventListener("touchstart", () => prefetchPage(linkUrl), {
-      passive: true,
-      once: true,
-    });
+    link.addEventListener(
+      "touchstart",
+      () => {
+        prefetchPage(linkUrl);
+      },
+      {
+        passive: true,
+        once: true,
+      }
+    );
   }
 
   link.addEventListener("click", (event) => {
