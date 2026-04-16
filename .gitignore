@@ -1,4 +1,2 @@
 server.log
 server.err
-.env
-data/*.jsonl
