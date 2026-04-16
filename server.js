@@ -4,36 +4,40 @@ const http = require("node:http");
 
 const projectRoot = __dirname;
 const dataDirectory = path.join(projectRoot, "data");
-loadEnvFile(path.join(projectRoot, ".env"));
 
 const businessContext = {
   company: "Imperial Houses",
   tagline: "D.R Construction & Best Homes",
-  industry: "Luxury construction and real estate development",
+  industry: "Real Estate / Construction",
+  tone: "Premium, professional, friendly",
   locations: ["Chennai", "Thiruvanmiyur", "Nanganallur", "ECR Belt"],
   offices: [
     "No. 6, 13th East Street, Kamaraj Nagar, Thiruvanmiyur, Chennai - 600041",
     "No. 12/21, 45th Street, Nanganallur, Chennai - 600061",
   ],
-  contacts: {
-    phonePrimary: "+91 96775 55912",
-    phoneSecondary: "+91 96776 66812",
-    email: "info.imperialhomes@gmail.com",
-    whatsappNumber: "919677555912",
-  },
+  contacts: [
+    "Phone: +91 96775 55912",
+    "Phone: +91 96776 66812",
+    "Email: info.imperialhomes@gmail.com",
+  ],
   services: [
     "Building construction",
-    "Luxury interiors",
-    "Renovation",
-    "Project management",
+    "Joint venture projects",
     "Property development",
-    "Joint venture development",
+    "Renovation",
+    "Interiors",
+    "Project management",
     "Total home solutions",
   ],
+  target: [
+    "Clients looking to build homes",
+    "Apartment buyers",
+    "Landowners for joint ventures",
+  ],
   projects: [
-    "Imperial Regal in Thiruvanmiyur with 3 BHK apartments",
-    "Imperial Royale in Nanganallur with ready-to-occupy 2 and 3 BHK homes",
-    "Imperial Park on the ECR belt as a featured layout",
+    "Imperial Regal - ongoing - Thiruvanmiyur, Chennai - 3 BHK apartments",
+    "Imperial Royale - ready to occupy - Nanganallur, Chennai - 2 & 3 BHK",
+    "Imperial Park - featured layout - ECR Belt, Chennai - community layout",
   ],
   process: ["Define", "Design", "Determine", "Develop", "Deliver"],
 };
@@ -45,12 +49,13 @@ const mimeTypes = {
   ".jpg": "image/jpeg",
   ".js": "application/javascript; charset=utf-8",
   ".json": "application/json; charset=utf-8",
-  ".mp4": "video/mp4",
   ".png": "image/png",
   ".svg": "image/svg+xml",
   ".txt": "text/plain; charset=utf-8",
   ".webp": "image/webp",
 };
+
+loadEnvFile(path.join(projectRoot, ".env"));
 
 const port = Number(process.env.PORT) || 3000;
 
@@ -59,25 +64,34 @@ const server = http.createServer(async (request, response) => {
     const requestUrl = new URL(request.url, `http://${request.headers.host || "localhost"}`);
 
     if (request.method === "GET" && requestUrl.pathname === "/api/health") {
-      return sendJson(response, 200, { ok: true, service: "imperial-homes-site" });
+      return sendJson(response, 200, {
+        ok: true,
+        service: "imperial-homes-site",
+      });
     }
 
     if (request.method === "POST" && requestUrl.pathname === "/api/chat") {
-      return handleChat(await readJsonBody(request), response);
+      const payload = await readJsonBody(request);
+      return handleChat(payload, response);
     }
 
     if (request.method === "POST" && requestUrl.pathname === "/api/lead") {
-      return handleLead(await readJsonBody(request), response);
+      const payload = await readJsonBody(request);
+      return handleLead(payload, response);
     }
 
     if (request.method === "GET" || request.method === "HEAD") {
       return serveStaticFile(requestUrl.pathname, response, request.method === "HEAD");
     }
 
-    return sendJson(response, 405, { error: "Method not allowed" });
+    return sendJson(response, 405, {
+      error: "Method not allowed",
+    });
   } catch (error) {
     console.error(error);
-    return sendJson(response, 500, { error: "Internal server error" });
+    return sendJson(response, 500, {
+      error: "Internal server error",
+    });
   }
 });
 
@@ -88,11 +102,15 @@ server.listen(port, () => {
 async function handleChat(payload, response) {
   const message = typeof payload?.message === "string" ? payload.message.trim() : "";
   if (!message) {
-    return sendJson(response, 400, { error: "Message is required" });
+    return sendJson(response, 400, {
+      error: "Message is required",
+    });
   }
 
   const history = Array.isArray(payload?.history)
-    ? payload.history.filter((entry) => entry && typeof entry.role === "string" && typeof entry.content === "string").slice(-8)
+    ? payload.history
+        .filter((entry) => entry && typeof entry.role === "string" && typeof entry.content === "string")
+        .slice(-8)
     : [];
 
   const analysis = analyzeIntent(message);
@@ -109,18 +127,22 @@ async function handleChat(payload, response) {
 
   await appendJsonLine("chat-log.jsonl", record);
 
-  let replyPayload = null;
+  let reply = "";
   let usedAi = false;
 
   try {
-    replyPayload = await generateAiReply(message, history, analysis);
-    usedAi = Boolean(replyPayload?.reply);
+    reply = await generateAiReply(message, history, analysis);
+    usedAi = Boolean(reply);
   } catch (error) {
     console.error("AI reply failed:", error.message);
   }
 
-  if (!replyPayload?.reply) {
-    replyPayload = generateFallbackReply(message, analysis);
+  if (!reply) {
+    reply = generateFallbackReply(message, analysis);
+  }
+
+  if (analysis.isStrongIntent) {
+    reply = "That’s great! Our team will contact you shortly.";
   }
 
   let notifications = [];
@@ -130,19 +152,19 @@ async function handleChat(payload, response) {
       summary: `New client inquiry: ${message}`,
       details: record,
     });
+  }
 
+  if (analysis.shouldNotify) {
     await appendJsonLine("lead-log.jsonl", {
       ...record,
-      reply: replyPayload.reply,
+      reply,
       usedAi,
       notifications,
     });
   }
 
   return sendJson(response, 200, {
-    reply: replyPayload.reply,
-    actions: replyPayload.actions || [],
-    action: replyPayload.action || null,
+    reply,
     shouldNotify: analysis.shouldNotify,
     intent: analysis.primaryIntent,
     notifications,
@@ -152,14 +174,18 @@ async function handleChat(payload, response) {
 async function handleLead(payload, response) {
   const formData = payload?.formData;
   if (!formData || typeof formData !== "object") {
-    return sendJson(response, 400, { error: "Form data is required" });
+    return sendJson(response, 400, {
+      error: "Form data is required",
+    });
   }
 
   if (!String(formData.name || "").trim() || !String(formData.phone || "").trim() || !String(formData.email || "").trim()) {
-    return sendJson(response, 400, { error: "Name, phone, and email are required" });
+    return sendJson(response, 400, {
+      error: "Name, phone, and email are required",
+    });
   }
 
-  const record = {
+  const leadRecord = {
     type: "form",
     source: payload?.source || "website-form",
     createdAt: new Date().toISOString(),
@@ -169,9 +195,9 @@ async function handleLead(payload, response) {
     formData,
   };
 
-  await appendJsonLine("form-log.jsonl", record);
+  await appendJsonLine("form-log.jsonl", leadRecord);
 
-  const summary = [
+  const leadSummary = [
     `New client inquiry: ${formData.name || "Unknown lead"}`,
     formData.phone ? `Phone: ${formData.phone}` : "",
     formData.email ? `Email: ${formData.email}` : "",
@@ -184,8 +210,8 @@ async function handleLead(payload, response) {
 
   const notifications = await notifyOwner({
     kind: "website-form",
-    summary,
-    details: record,
+    summary: leadSummary,
+    details: leadRecord,
   });
 
   return sendJson(response, 200, {
@@ -198,27 +224,36 @@ async function handleLead(payload, response) {
 async function generateAiReply(message, history, analysis) {
   const openAiKey = process.env.OPENAI_API_KEY;
   if (!openAiKey) {
-    return null;
+    return "";
   }
 
   const model = process.env.OPENAI_MODEL || "gpt-4.1-mini";
   const systemPrompt = [
-    `You are ${businessContext.company}'s website assistant, also called Safa AI.`,
-    "Respond like a polished luxury construction concierge.",
-    "Keep replies short, natural, specific, and human.",
-    "Do not repeat the same opening every time.",
+    `You are the website sales and support assistant for ${businessContext.company}.`,
+    "You are also known as Safa AI.",
+    `Tagline: ${businessContext.tagline}.`,
+    `Tone: ${businessContext.tone}.`,
+    `Industry: ${businessContext.industry}.`,
+    `Office locations: ${businessContext.offices.join("; ")}.`,
+    `Service areas: ${businessContext.locations.join(", ")}.`,
+    `Primary contacts: ${businessContext.contacts.join("; ")}.`,
     `Services: ${businessContext.services.join(", ")}.`,
-    `Projects: ${businessContext.projects.join("; ")}.`,
+    `Target customers: ${businessContext.target.join(", ")}.`,
+    `Current project highlights: ${businessContext.projects.join("; ")}.`,
     `Process: ${businessContext.process.join(", ")}.`,
-    `Locations: ${businessContext.locations.join(", ")}.`,
-    `Offices: ${businessContext.offices.join("; ")}.`,
-    `Contacts: ${businessContext.contacts.phonePrimary}, ${businessContext.contacts.phoneSecondary}, ${businessContext.contacts.email}.`,
-    "If pricing is asked, explain briefly that pricing depends on scope, location, structural system, and finish level.",
-    "If the user wants to contact the owner, asks for WhatsApp, or wants to discuss a project, invite them to continue on WhatsApp in one short sentence.",
+    "Keep every answer short, clear, and professional.",
+    "Answer as a real estate and construction company assistant, not as a generic AI.",
+    "If the user says hi, hello, or starts the first interaction, reply with exactly: Welcome to Imperial Houses. I'm Safa, your AI assistant. How can I help you today?",
+    "Answer questions about services, locations, project types, process, contact details, joint ventures, interiors, and construction naturally using the business context.",
+    "If the user shows strong buying or investment intent, asks for price, contact, call, or visit, reply with exactly: That’s great! Our team will contact you shortly.",
+    "If pricing is asked, explain briefly that pricing depends on scope, location, and specifications.",
+    "If ongoing or completed projects are asked, use the listed project highlights.",
+    "If the request needs a human team, say the team will contact them shortly.",
+    "If a detail is not available on the website, say that clearly and invite the user to share the requirement for a follow-up.",
     `Detected intent: ${analysis.primaryIntent}.`,
   ].join(" ");
 
-  const aiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
+  const response = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
     headers: {
       Authorization: `Bearer ${openAiKey}`,
@@ -226,71 +261,67 @@ async function generateAiReply(message, history, analysis) {
     },
     body: JSON.stringify({
       model,
-      temperature: 0.7,
-      max_tokens: 160,
+      temperature: 0.4,
+      max_tokens: 180,
       messages: [
-        { role: "system", content: systemPrompt },
+        {
+          role: "system",
+          content: systemPrompt,
+        },
         ...history.map((entry) => ({
           role: entry.role === "assistant" ? "assistant" : "user",
           content: entry.content,
         })),
-        { role: "user", content: message },
+        {
+          role: "user",
+          content: message,
+        },
       ],
     }),
   });
 
-  if (!aiResponse.ok) {
-    throw new Error(`OpenAI API error ${aiResponse.status}: ${await aiResponse.text()}`);
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`OpenAI API error ${response.status}: ${errorText}`);
   }
 
-  const data = await aiResponse.json();
-  const reply = String(data?.choices?.[0]?.message?.content || "").trim();
-  const basePayload = { reply };
-
-  if (analysis.contactOwner || analysis.primaryIntent === "contact") {
-    return withWhatsappAction(basePayload, message);
-  }
-
-  if (analysis.primaryIntent === "pricing") {
-    basePayload.actions = [{ label: "Get project guidance", url: buildWhatsappLink("Hi, I want to discuss pricing for my project with Imperial Homes"), targetBlank: true }];
-  }
-
-  return basePayload;
+  const data = await response.json();
+  return String(data?.choices?.[0]?.message?.content || "").trim();
 }
 
 function analyzeIntent(message) {
   const normalizedMessage = message.toLowerCase();
   const strongIntentPatterns = [
-    /\b(price|cost|quote|estimate|book|visit|site visit|interested|contact|call|meeting)\b/,
-    /\b(i want|need to|looking to|can we discuss|can we meet|talk to)\b/,
+    /\b(buy|book|booking|invest|investment|contact|call|visit|site visit|price|cost|quote|estimate|interested)\b/,
+    /\b(i want|looking to|need to|can we meet|schedule)\b/,
   ];
-
-  const contactOwner =
-    /\b(owner|founder|boss|management|team head)\b/.test(normalizedMessage) ||
-    /\bwhatsapp\b/.test(normalizedMessage) ||
-    /\bdiscuss a project\b/.test(normalizedMessage);
+  const hasStrongIntent = strongIntentPatterns.some((pattern) => pattern.test(normalizedMessage));
+  const hasContactDetails =
+    /(?:\+?\d[\d\s-]{7,}\d)|(?:[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,})/i.test(message);
 
   let primaryIntent = "general";
-  if (/\b(joint venture|joint-venture|landowner|land owner|develop my land)\b/.test(normalizedMessage)) {
+
+  if (/\b(joint venture|joint-venture|landowner|land owner|property owner|develop my land)\b/.test(normalizedMessage)) {
     primaryIntent = "joint-venture";
   } else if (/\b(price|cost|budget|quote|estimate)\b/.test(normalizedMessage)) {
     primaryIntent = "pricing";
   } else if (/\b(project|projects|ongoing|completed|apartment|royale|regal|park)\b/.test(normalizedMessage)) {
     primaryIntent = "projects";
-  } else if (/\b(construction|build|renovation|interior|interiors|service|services|project management)\b/.test(normalizedMessage)) {
+  } else if (/\b(construction|build|renovation|interior|interiors|property development|service|services)\b/.test(normalizedMessage)) {
     primaryIntent = "services";
-  } else if (/\b(contact|call|visit|meeting|site visit|whatsapp|owner)\b/.test(normalizedMessage)) {
+  } else if (/\b(contact|call|visit|meeting|site visit)\b/.test(normalizedMessage)) {
+    primaryIntent = "contact";
+  } else if (hasStrongIntent) {
     primaryIntent = "contact";
   }
 
-  const isStrongIntent = strongIntentPatterns.some((pattern) => pattern.test(normalizedMessage)) || contactOwner;
-  const shouldNotify = isStrongIntent || primaryIntent === "contact";
+  const shouldNotify = hasStrongIntent || hasContactDetails || primaryIntent === "contact";
 
   return {
-    primaryIntent,
-    isStrongIntent,
+    isStrongIntent: hasStrongIntent,
+    hasContactDetails,
     shouldNotify,
-    contactOwner,
+    primaryIntent,
   };
 }
 
@@ -298,76 +329,42 @@ function generateFallbackReply(message, analysis) {
   const normalizedMessage = message.toLowerCase();
 
   if (/^(hi|hello|hey|good morning|good afternoon|good evening)\b/.test(normalizedMessage)) {
-    return { reply: "Welcome to Imperial Houses. How can I help with your project today?" };
-  }
-
-  if (analysis.contactOwner) {
-    return withWhatsappAction(
-      { reply: "I can connect you to the owner on WhatsApp right away." },
-      "Hi, I want to discuss a project with Imperial Homes"
-    );
-  }
-
-  if (analysis.primaryIntent === "pricing") {
-    return {
-      reply: "Pricing depends on scope, location, structural requirement, and finish level. Share your project details and we can guide the next step.",
-      actions: [{ label: "Discuss pricing", url: buildWhatsappLink("Hi, I want to discuss pricing for my project with Imperial Homes"), targetBlank: true }],
-    };
+    return "Welcome to Imperial Houses. I'm Safa, your AI assistant. How can I help you today?";
   }
 
   if (analysis.primaryIntent === "joint-venture") {
-    return {
-      reply: "We work with landowners on planning, approvals, construction, and sales coordination for joint venture projects.",
-      actions: [{ label: "Discuss joint venture", url: buildWhatsappLink("Hi, I want to discuss a joint venture opportunity with Imperial Homes"), targetBlank: true }],
-    };
+    return "Imperial Houses works with landowners on transparent joint venture projects covering planning, approvals, construction, and sales coordination.";
+  }
+
+  if (/\b(where|location|office|address|located|nanganallur|thiruvanmiyur|chennai)\b/.test(normalizedMessage)) {
+    return "Imperial Houses works across Chennai, including Thiruvanmiyur, Nanganallur, and the ECR belt, with offices in Thiruvanmiyur and Nanganallur.";
+  }
+
+  if (/\b(phone|email|whatsapp|contact details|reach)\b/.test(normalizedMessage)) {
+    return "You can reach Imperial Houses at +91 96775 55912, +91 96776 66812, or info.imperialhomes@gmail.com. WhatsApp is also available from the floating button.";
+  }
+
+  if (analysis.primaryIntent === "pricing") {
+    return "Pricing depends on the scope, location, specifications, and project type. Share your requirement and our team can guide you better.";
   }
 
   if (analysis.primaryIntent === "projects") {
-    return { reply: `Current highlights include ${businessContext.projects.join(", ")}.` };
+    return "Imperial Houses currently highlights Imperial Regal in Thiruvanmiyur, Imperial Royale in Nanganallur, and Imperial Park along the ECR belt.";
   }
 
-  if (analysis.primaryIntent === "services") {
-    return { reply: `We handle ${businessContext.services.join(", ")}.` };
+  if (analysis.primaryIntent === "services" || /\b(home|build|construction)\b/.test(normalizedMessage)) {
+    return "Imperial Houses offers building construction, joint venture development, property development, interiors, renovation, and project management.";
   }
 
-  if (analysis.primaryIntent === "contact") {
-    return withWhatsappAction(
-      { reply: `You can reach us at ${businessContext.contacts.phonePrimary} or continue on WhatsApp.` },
-      message
-    );
+  if (/\b(interior|interiors|design)\b/.test(normalizedMessage)) {
+    return "Imperial Houses delivers luxury interiors, design coordination, total home solutions, and premium finishing for residential spaces.";
   }
 
-  if (/\b(location|office|address|nanganallur|thiruvanmiyur|chennai)\b/.test(normalizedMessage)) {
-    return { reply: `We work across Chennai, including Thiruvanmiyur, Nanganallur, and the ECR belt.` };
+  if (/\b(method|process|timeline|steps|how do you work)\b/.test(normalizedMessage)) {
+    return "Imperial Houses follows a five-step method: Define, Design, Determine, Develop, and Deliver, so clients can track every phase clearly.";
   }
 
-  return { reply: "I can help with services, pricing, projects, site visits, or owner contact. Tell me what you need." };
-}
-
-function withWhatsappAction(payload, message) {
-  const whatsappMessage = normalizeWhatsappMessage(message);
-  const url = buildWhatsappLink(whatsappMessage);
-
-  return {
-    ...payload,
-    actions: [{ label: "Open WhatsApp", url, targetBlank: true }],
-    action: { type: "whatsapp", url },
-  };
-}
-
-function normalizeWhatsappMessage(message) {
-  const base = String(message || "").trim();
-  if (!base) {
-    return "Hi, I want to discuss a project with Imperial Homes";
-  }
-  if (/^hi,\s*i want to discuss/i.test(base)) {
-    return base;
-  }
-  return `Hi, I want to discuss this with Imperial Homes: ${base}`;
-}
-
-function buildWhatsappLink(message) {
-  return `https://wa.me/${businessContext.contacts.whatsappNumber}?text=${encodeURIComponent(message)}`;
+  return "Imperial Houses can help with construction services, joint venture projects, pricing guidance, and current developments. Tell me what you would like to know.";
 }
 
 async function notifyOwner(notification) {
@@ -376,20 +373,31 @@ async function notifyOwner(notification) {
 
   if (process.env.OWNER_WEBHOOK_URL) {
     try {
-      const webhookResponse = await fetch(process.env.OWNER_WEBHOOK_URL, {
+      const response = await fetch(process.env.OWNER_WEBHOOK_URL, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify(notification),
       });
-      deliveries.push({ channel: "webhook", ok: webhookResponse.ok, status: webhookResponse.status });
+
+      deliveries.push({
+        channel: "webhook",
+        ok: response.ok,
+        status: response.status,
+      });
     } catch (error) {
-      deliveries.push({ channel: "webhook", ok: false, error: error.message });
+      deliveries.push({
+        channel: "webhook",
+        ok: false,
+        error: error.message,
+      });
     }
   }
 
   if (process.env.RESEND_API_KEY && process.env.OWNER_EMAIL_TO && process.env.OWNER_EMAIL_FROM) {
     try {
-      const emailResponse = await fetch("https://api.resend.com/emails", {
+      const response = await fetch("https://api.resend.com/emails", {
         method: "POST",
         headers: {
           Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
@@ -402,9 +410,59 @@ async function notifyOwner(notification) {
           text,
         }),
       });
-      deliveries.push({ channel: "email", ok: emailResponse.ok, status: emailResponse.status });
+
+      deliveries.push({
+        channel: "email",
+        ok: response.ok,
+        status: response.status,
+      });
     } catch (error) {
-      deliveries.push({ channel: "email", ok: false, error: error.message });
+      deliveries.push({
+        channel: "email",
+        ok: false,
+        error: error.message,
+      });
+    }
+  }
+
+  if (
+    process.env.TWILIO_ACCOUNT_SID &&
+    process.env.TWILIO_AUTH_TOKEN &&
+    process.env.TWILIO_WHATSAPP_FROM &&
+    process.env.OWNER_WHATSAPP_TO
+  ) {
+    try {
+      const twilioBody = new URLSearchParams({
+        From: `whatsapp:${process.env.TWILIO_WHATSAPP_FROM}`,
+        To: `whatsapp:${process.env.OWNER_WHATSAPP_TO}`,
+        Body: text,
+      });
+
+      const response = await fetch(
+        `https://api.twilio.com/2010-04-01/Accounts/${process.env.TWILIO_ACCOUNT_SID}/Messages.json`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Basic ${Buffer.from(
+              `${process.env.TWILIO_ACCOUNT_SID}:${process.env.TWILIO_AUTH_TOKEN}`
+            ).toString("base64")}`,
+            "Content-Type": "application/x-www-form-urlencoded",
+          },
+          body: twilioBody,
+        }
+      );
+
+      deliveries.push({
+        channel: "whatsapp",
+        ok: response.ok,
+        status: response.status,
+      });
+    } catch (error) {
+      deliveries.push({
+        channel: "whatsapp",
+        ok: false,
+        error: error.message,
+      });
     }
   }
 
@@ -413,12 +471,17 @@ async function notifyOwner(notification) {
 
 async function readJsonBody(request) {
   const chunks = [];
+
   for await (const chunk of request) {
     chunks.push(chunk);
   }
 
   const rawBody = Buffer.concat(chunks).toString("utf8");
-  return rawBody ? JSON.parse(rawBody) : {};
+  if (!rawBody) {
+    return {};
+  }
+
+  return JSON.parse(rawBody);
 }
 
 async function appendJsonLine(fileName, payload) {
@@ -431,23 +494,31 @@ async function serveStaticFile(requestPath, response, isHeadRequest) {
   const resolvedPath = path.normalize(path.join(projectRoot, cleanPath));
 
   if (!resolvedPath.startsWith(projectRoot)) {
-    return sendJson(response, 403, { error: "Forbidden" });
+    return sendJson(response, 403, {
+      error: "Forbidden",
+    });
   }
 
   let fileStat;
   try {
     fileStat = await fs.promises.stat(resolvedPath);
-  } catch {
-    return sendJson(response, 404, { error: "Not found" });
+  } catch (error) {
+    return sendJson(response, 404, {
+      error: "Not found",
+    });
   }
 
   if (!fileStat.isFile()) {
-    return sendJson(response, 404, { error: "Not found" });
+    return sendJson(response, 404, {
+      error: "Not found",
+    });
   }
 
   const extension = path.extname(resolvedPath).toLowerCase();
+  const contentType = mimeTypes[extension] || "application/octet-stream";
+
   response.writeHead(200, {
-    "Content-Type": mimeTypes[extension] || "application/octet-stream",
+    "Content-Type": contentType,
     "Content-Length": fileStat.size,
   });
 
@@ -459,7 +530,9 @@ async function serveStaticFile(requestPath, response, isHeadRequest) {
 }
 
 function sendJson(response, statusCode, payload) {
-  response.writeHead(statusCode, { "Content-Type": "application/json; charset=utf-8" });
+  response.writeHead(statusCode, {
+    "Content-Type": "application/json; charset=utf-8",
+  });
   response.end(JSON.stringify(payload));
 }
 
@@ -470,19 +543,23 @@ function loadEnvFile(filePath) {
 
   const fileContents = fs.readFileSync(filePath, "utf8");
   fileContents.split(/\r?\n/).forEach((line) => {
-    const trimmed = line.trim();
-    if (!trimmed || trimmed.startsWith("#")) {
+    const trimmedLine = line.trim();
+    if (!trimmedLine || trimmedLine.startsWith("#")) {
       return;
     }
 
-    const separatorIndex = trimmed.indexOf("=");
+    const separatorIndex = trimmedLine.indexOf("=");
     if (separatorIndex === -1) {
       return;
     }
 
-    const key = trimmed.slice(0, separatorIndex).trim();
-    let value = trimmed.slice(separatorIndex + 1).trim();
-    if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
+    const key = trimmedLine.slice(0, separatorIndex).trim();
+    let value = trimmedLine.slice(separatorIndex + 1).trim();
+
+    if (
+      (value.startsWith('"') && value.endsWith('"')) ||
+      (value.startsWith("'") && value.endsWith("'"))
+    ) {
       value = value.slice(1, -1);
     }
 
